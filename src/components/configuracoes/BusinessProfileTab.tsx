@@ -1,15 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Building2, Upload, Loader2 } from "lucide-react";
+import { Building2, Loader2 } from "lucide-react";
 import { useBusinessSettings, BusinessSettingsInput } from "@/hooks/useBusinessSettings";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 
 export function BusinessProfileTab() {
-  const { settings, isLoading, updateSettings, uploadLogo } = useBusinessSettings();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { settings, isLoading, updateSettings } = useBusinessSettings();
   
   const [formData, setFormData] = useState<BusinessSettingsInput>({
     business_name: "",
@@ -17,8 +16,6 @@ export function BusinessProfileTab() {
     opening_time: "09:00",
     closing_time: "19:00",
   });
-  const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (settings) {
@@ -28,27 +25,8 @@ export function BusinessProfileTab() {
         opening_time: settings.opening_time || "09:00",
         closing_time: settings.closing_time || "19:00",
       });
-      setPreviewUrl(settings.logo_url);
     }
   }, [settings]);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Preview
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
-
-    // Upload
-    setUploading(true);
-    const publicUrl = await uploadLogo(file);
-    setUploading(false);
-
-    if (publicUrl) {
-      setFormData(prev => ({ ...prev, logo_url: publicUrl }));
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,36 +55,16 @@ export function BusinessProfileTab() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex flex-col md:flex-row gap-6">
-            {/* Logo Upload */}
-            <div className="flex flex-col items-center gap-4">
-              <Avatar className="h-32 w-32 border-2 border-border">
-                <AvatarImage src={previewUrl || undefined} alt="Logo" />
-                <AvatarFallback className="bg-muted text-4xl">
-                  <Building2 className="h-12 w-12 text-muted-foreground" />
-                </AvatarFallback>
-              </Avatar>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Upload className="h-4 w-4 mr-2" />
-                )}
-                {uploading ? "Enviando..." : "Fazer Upload"}
-              </Button>
-            </div>
+            {/* Logo Upload usando componente reutilizável */}
+            <AvatarUpload
+              currentImageUrl={formData.logo_url}
+              onImageUploaded={(url) => setFormData(prev => ({ ...prev, logo_url: url }))}
+              bucket="logos"
+              folder="logos"
+              fallbackIcon={<Building2 className="h-12 w-12 text-muted-foreground" />}
+              size="lg"
+              label="Logo da Barbearia"
+            />
 
             {/* Form Fields */}
             <div className="flex-1 space-y-4">
