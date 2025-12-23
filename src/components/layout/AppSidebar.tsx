@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -22,7 +21,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
@@ -35,6 +33,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUnits } from "@/hooks/useUnits";
+import { useCurrentUnit } from "@/contexts/UnitContext";
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -46,18 +46,15 @@ const menuItems = [
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
-const units = [
-  { id: "1", name: "Barbearia Centro" },
-  { id: "2", name: "Barbearia Shopping" },
-  { id: "3", name: "Barbearia Zona Sul" },
-];
-
 export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { toast } = useToast();
-  const [selectedUnit, setSelectedUnit] = useState(units[0]);
+  const { units } = useUnits();
+  const { currentUnitId, setCurrentUnitId } = useCurrentUnit();
+
+  const selectedUnit = units.find((u) => u.id === currentUnitId) || units[0];
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -88,7 +85,7 @@ export function AppSidebar() {
         </div>
 
         {/* Unit Selector */}
-        {!collapsed && (
+        {!collapsed && units.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -97,17 +94,17 @@ export function AppSidebar() {
               >
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-primary" />
-                  <span className="truncate text-sm">{selectedUnit.name}</span>
+                  <span className="truncate text-sm">{selectedUnit?.name || "Selecionar"}</span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuContent align="start" className="w-56 bg-popover">
               {units.map((unit) => (
                 <DropdownMenuItem
                   key={unit.id}
-                  onClick={() => setSelectedUnit(unit)}
-                  className={selectedUnit.id === unit.id ? "bg-primary/10" : ""}
+                  onClick={() => setCurrentUnitId(unit.id)}
+                  className={`cursor-pointer ${currentUnitId === unit.id ? "bg-primary/10" : ""}`}
                 >
                   <Building2 className="mr-2 h-4 w-4" />
                   {unit.name}
