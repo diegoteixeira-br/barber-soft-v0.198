@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, User } from "lucide-react";
+import { Upload, Loader2, User, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface AvatarUploadProps {
   currentImageUrl?: string | null;
   onImageUploaded: (url: string) => void;
+  onImageRemoved?: () => void;
   bucket: string;
   folder: string;
   fallbackIcon?: React.ReactNode;
@@ -32,6 +33,7 @@ const iconSizes = {
 export function AvatarUpload({
   currentImageUrl,
   onImageUploaded,
+  onImageRemoved,
   bucket,
   folder,
   fallbackIcon,
@@ -95,6 +97,13 @@ export function AvatarUpload({
     setPreviewUrl(currentImageUrl);
   }
 
+  const handleRemove = () => {
+    setPreviewUrl(null);
+    onImageRemoved?.();
+  };
+
+  const hasImage = !!previewUrl;
+
   return (
     <div className={cn("flex flex-col items-center gap-3", className)}>
       {label && (
@@ -116,20 +125,35 @@ export function AvatarUpload({
         className="hidden"
       />
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={uploading}
-      >
-        {uploading ? (
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        ) : (
-          <Upload className="h-4 w-4 mr-2" />
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4 mr-2" />
+          )}
+          {uploading ? "Enviando..." : "Fazer Upload"}
+        </Button>
+
+        {hasImage && onImageRemoved && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleRemove}
+            disabled={uploading}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         )}
-        {uploading ? "Enviando..." : "Fazer Upload"}
-      </Button>
+      </div>
     </div>
   );
 }

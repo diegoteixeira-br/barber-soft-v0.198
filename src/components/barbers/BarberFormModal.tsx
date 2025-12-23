@@ -104,6 +104,7 @@ export function BarberFormModal({
               <AvatarUpload
                 currentImageUrl={form.watch("photo_url") || undefined}
                 onImageUploaded={(url) => form.setValue("photo_url", url)}
+                onImageRemoved={() => form.setValue("photo_url", "")}
                 bucket="barber-content"
                 folder="profissionais"
                 fallbackIcon={<User className="h-8 w-8 text-muted-foreground" />}
