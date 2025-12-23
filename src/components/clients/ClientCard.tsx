@@ -23,8 +23,9 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
 
   const formatBirthDate = (date: string | null) => {
     if (!date) return null;
-    const d = new Date(date);
-    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+    // Parse ISO string directly to avoid timezone conversion
+    const [, month, day] = date.split('-');
+    return `${day}/${month}`;
   };
 
   const formatLastVisit = (date: string | null) => {
