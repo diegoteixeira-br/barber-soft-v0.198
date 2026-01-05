@@ -8,13 +8,15 @@ import { ptBR } from "date-fns/locale";
 export function useAppointmentNotification() {
   const { currentUnitId } = useCurrentUnit();
   const { settings } = useMarketingSettings();
-  const processedIdsRef = useRef<Set<string>>(new Set());
+  const processedInsertIdsRef = useRef<Set<string>>(new Set());
+  const processedCancelIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!currentUnitId) return;
 
     const channel = supabase
       .channel('appointment-notifications')
+      // Listen for new appointments
       .on(
         'postgres_changes',
         {
@@ -40,8 +42,8 @@ export function useAppointmentNotification() {
           }
 
           // Avoid duplicate notifications
-          if (processedIdsRef.current.has(newAppointment.id)) return;
-          processedIdsRef.current.add(newAppointment.id);
+          if (processedInsertIdsRef.current.has(newAppointment.id)) return;
+          processedInsertIdsRef.current.add(newAppointment.id);
 
           // Check if vocal notification is enabled
           if (!settings?.vocal_notification_enabled) return;
@@ -82,12 +84,61 @@ export function useAppointmentNotification() {
           speak(message);
         }
       )
+      // Listen for cancellations (status updated to 'cancelled')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'appointments',
+          filter: `unit_id=eq.${currentUnitId}`,
+        },
+        async (payload) => {
+          const updatedAppointment = payload.new as {
+            id: string;
+            client_name: string;
+            start_time: string;
+            status: string;
+            source: string | null;
+          };
+          const oldAppointment = payload.old as {
+            status: string;
+          };
+
+          // Only notify when status changes TO cancelled
+          if (updatedAppointment.status !== 'cancelled' || oldAppointment.status === 'cancelled') {
+            return;
+          }
+
+          // Only notify for WhatsApp appointments
+          if (updatedAppointment.source !== 'whatsapp') {
+            console.log('Skipping cancellation notification: not a WhatsApp appointment');
+            return;
+          }
+
+          // Avoid duplicate notifications
+          if (processedCancelIdsRef.current.has(updatedAppointment.id)) return;
+          processedCancelIdsRef.current.add(updatedAppointment.id);
+
+          // Check if cancellation vocal notification is enabled
+          if (!settings?.vocal_cancellation_enabled) return;
+
+          // Build cancellation message
+          const date = new Date(updatedAppointment.start_time);
+          const timeText = format(date, "HH 'e' mm", { locale: ptBR });
+
+          const message = `O agendamento de ${updatedAppointment.client_name} às ${timeText} foi cancelado`;
+
+          // Speak using Web Speech API
+          speak(message);
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUnitId, settings?.vocal_notification_enabled]);
+  }, [currentUnitId, settings?.vocal_notification_enabled, settings?.vocal_cancellation_enabled]);
 }
 
 function speak(text: string) {

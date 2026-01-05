@@ -241,6 +241,7 @@ export type Database = {
           rescue_message_template: string | null
           updated_at: string | null
           user_id: string
+          vocal_cancellation_enabled: boolean | null
           vocal_notification_enabled: boolean | null
           webhook_url: string | null
         }
@@ -266,6 +267,7 @@ export type Database = {
           rescue_message_template?: string | null
           updated_at?: string | null
           user_id: string
+          vocal_cancellation_enabled?: boolean | null
           vocal_notification_enabled?: boolean | null
           webhook_url?: string | null
         }
@@ -291,6 +293,7 @@ export type Database = {
           rescue_message_template?: string | null
           updated_at?: string | null
           user_id?: string
+          vocal_cancellation_enabled?: boolean | null
           vocal_notification_enabled?: boolean | null
           webhook_url?: string | null
         }
