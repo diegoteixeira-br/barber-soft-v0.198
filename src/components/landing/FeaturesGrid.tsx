@@ -42,7 +42,7 @@ const features = [
   {
     icon: MessageCircle,
     title: "Integração WhatsApp",
-    description: "Conecte via QR Code e automatize atendimento, confirmações e lembretes.",
+    description: "Sem app para baixar! Seu cliente agenda direto no WhatsApp que ele já usa. Zero fricção.",
     color: "orange-neon",
   },
 ];

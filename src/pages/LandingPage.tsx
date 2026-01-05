@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { ProblemSection } from "@/components/landing/ProblemSection";
+import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { SolutionSection } from "@/components/landing/SolutionSection";
 import { FeaturesGrid } from "@/components/landing/FeaturesGrid";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
@@ -20,6 +21,7 @@ export default function LandingPage() {
       <main>
         <HeroSection />
         <ProblemSection />
+        <ComparisonSection />
         <SolutionSection />
         <FeaturesGrid />
         <TestimonialsSection />

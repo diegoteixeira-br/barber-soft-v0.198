@@ -1,6 +1,6 @@
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { ChatSimulation } from "./ChatSimulation";
-import { Bot, Clock, MessageCircle, Calendar, Bell, UserCheck, Gift, RefreshCcw } from "lucide-react";
+import { Bot, Clock, MessageCircle, Calendar, Bell, UserCheck, Gift, RefreshCcw, Smartphone } from "lucide-react";
 
 const features = [
   { icon: Clock, text: "Responde 24 horas por dia" },
@@ -57,6 +57,21 @@ export function SolutionSection() {
                   <span className="text-sm text-foreground">{feature.text}</span>
                 </div>
               ))}
+            </div>
+
+            {/* WhatsApp Badge - Sem App para Baixar */}
+            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30 mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                  <Smartphone className="h-6 w-6 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-foreground font-semibold">Seu cliente já tem WhatsApp!</p>
+                  <p className="text-sm text-muted-foreground">
+                    Zero fricção. Sem baixar app. Sem criar conta.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-4 justify-center lg:justify-start">
