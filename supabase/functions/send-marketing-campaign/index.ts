@@ -9,11 +9,15 @@ const corsHeaders = {
 interface Target {
   phone: string;
   name: string;
+  unit_id: string;
 }
 
 interface RequestBody {
   message_template: string;
   targets: Target[];
+  unit_id: string;
+  media_url?: string;
+  media_type?: string;
 }
 
 serve(async (req) => {
@@ -45,7 +49,7 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with user's token
+    // Create Supabase client with service role
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify the user's JWT
@@ -62,49 +66,132 @@ serve(async (req) => {
 
     console.log(`User ${user.id} sending marketing campaign`);
 
-    // Get the user's company to retrieve evolution_instance_name
-    const { data: company, error: companyError } = await supabase
-      .from("companies")
-      .select("evolution_instance_name")
-      .eq("owner_user_id", user.id)
-      .maybeSingle();
+    // Parse request body
+    const body: RequestBody = await req.json();
+    const { message_template, targets, unit_id, media_url, media_type } = body;
 
-    if (companyError) {
-      console.error("Error fetching company:", companyError.message);
+    if (!message_template || !targets || targets.length === 0 || !unit_id) {
+      console.error("Invalid request body:", body);
       return new Response(
-        JSON.stringify({ error: "Erro ao buscar empresa" }),
+        JSON.stringify({ error: "Dados inválidos. Forneça message_template, targets e unit_id." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch unit data with WhatsApp credentials
+    const { data: unit, error: unitError } = await supabase
+      .from("units")
+      .select("id, name, evolution_instance_name, evolution_api_key, company_id, user_id")
+      .eq("id", unit_id)
+      .single();
+
+    if (unitError || !unit) {
+      console.error("Error fetching unit:", unitError?.message);
+      return new Response(
+        JSON.stringify({ error: "Unidade não encontrada" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user owns this unit
+    if (unit.user_id !== user.id) {
+      console.error("User does not own this unit");
+      return new Response(
+        JSON.stringify({ error: "Sem permissão para esta unidade" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if unit has WhatsApp configured
+    if (!unit.evolution_instance_name || !unit.evolution_api_key) {
+      console.error("Unit has no WhatsApp configured:", unit.id);
+      return new Response(
+        JSON.stringify({ 
+          error: `WhatsApp não configurado para a unidade "${unit.name}". Configure em Unidades > WhatsApp.` 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Creating campaign for unit ${unit.name} with ${targets.length} targets`);
+
+    // Create campaign record
+    const { data: campaign, error: campaignError } = await supabase
+      .from("marketing_campaigns")
+      .insert({
+        company_id: unit.company_id,
+        unit_id: unit_id,
+        message_template,
+        media_url: media_url || null,
+        media_type: media_type || null,
+        total_recipients: targets.length,
+        status: "processing",
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (campaignError || !campaign) {
+      console.error("Error creating campaign:", campaignError?.message);
+      return new Response(
+        JSON.stringify({ error: "Erro ao criar campanha" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!company?.evolution_instance_name) {
-      console.error("Company has no evolution_instance_name configured");
+    console.log(`Campaign ${campaign.id} created`);
+
+    // Create message logs for each target
+    const logs = targets.map((t) => ({
+      campaign_id: campaign.id,
+      recipient_phone: t.phone,
+      recipient_name: t.name,
+      recipient_type: "client",
+      status: "pending",
+    }));
+
+    const { data: insertedLogs, error: logsError } = await supabase
+      .from("campaign_message_logs")
+      .insert(logs)
+      .select("id, recipient_phone");
+
+    if (logsError) {
+      console.error("Error creating logs:", logsError.message);
+      // Update campaign to failed
+      await supabase
+        .from("marketing_campaigns")
+        .update({ status: "failed" })
+        .eq("id", campaign.id);
       return new Response(
-        JSON.stringify({ error: "Instância do WhatsApp não configurada. Vá em Configurações > Integrações." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Erro ao criar logs de envio" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Parse request body
-    const body: RequestBody = await req.json();
-    const { message_template, targets } = body;
+    console.log(`Created ${insertedLogs?.length} message logs`);
 
-    if (!message_template || !targets || targets.length === 0) {
-      console.error("Invalid request body:", body);
-      return new Response(
-        JSON.stringify({ error: "Dados inválidos. Forneça message_template e targets." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Build contacts array with log IDs for callback
+    const contacts = targets.map((t) => {
+      const log = insertedLogs?.find((l) => l.recipient_phone === t.phone);
+      return {
+        number: t.phone.replace(/\D/g, ""), // Remove formatting
+        text: message_template.replace(/\{\{nome\}\}/g, t.name),
+        log_id: log?.id || null,
+      };
+    });
 
-    console.log(`Sending campaign to ${targets.length} targets via n8n webhook`);
-
-    // Build payload for n8n
+    // Build n8n payload matching the workflow format
     const n8nPayload = {
-      instance_name: company.evolution_instance_name,
-      message_template,
-      targets,
+      instanceName: unit.evolution_instance_name,
+      api_key: unit.evolution_api_key,
+      mediaUrl: media_url || "",
+      mediaType: media_type || "",
+      contacts,
+      campaign_id: campaign.id,
+      callback_url: `${supabaseUrl}/functions/v1/campaign-callback`,
     };
+
+    console.log(`Sending to n8n webhook with ${contacts.length} contacts`);
 
     // Send to n8n webhook
     const n8nResponse = await fetch(n8nMarketingUrl, {
@@ -118,6 +205,13 @@ serve(async (req) => {
     if (!n8nResponse.ok) {
       const errorText = await n8nResponse.text();
       console.error("n8n webhook error:", n8nResponse.status, errorText);
+      
+      // Update campaign to failed
+      await supabase
+        .from("marketing_campaigns")
+        .update({ status: "failed" })
+        .eq("id", campaign.id);
+
       return new Response(
         JSON.stringify({ error: "Erro ao enviar para o webhook de marketing" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -129,7 +223,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Campanha enviada para ${targets.length} contato(s)` 
+        campaign_id: campaign.id,
+        message: `Campanha iniciada para ${targets.length} contato(s). Processando em segundo plano...` 
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

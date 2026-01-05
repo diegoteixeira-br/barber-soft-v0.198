@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Send, Users, Cake, UserX, Search, CheckSquare, Square, Building2, Settings, Save, Scissors } from "lucide-react";
+import { Send, Users, Cake, UserX, Search, CheckSquare, Square, Building2, Settings, Save, Scissors, Loader2 } from "lucide-react";
 import { MessageTemplatesModal } from "./MessageTemplatesModal";
 import { TemplateSelector } from "./TemplateSelector";
 import { useMessageTemplates } from "@/hooks/useMessageTemplates";
@@ -21,6 +21,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 type RecipientType = "clients" | "barbers";
+
+interface Target {
+  phone: string;
+  name: string;
+  unit_id: string;
+}
 
 const filterOptions = [
   { value: "all", label: "Todos os Clientes", icon: Users },
@@ -114,48 +120,107 @@ export function CampaignsTab() {
     setIsSending(true);
     
     try {
-      let targets;
+      // Group targets by unit_id
+      const targetsByUnit = new Map<string, { unitId: string; unitName: string; targets: Target[] }>();
+
       if (isClientsMode) {
-        targets = selectedClients.map((c) => ({
-          phone: c.phone,
-          name: c.name,
-        }));
+        const selectedClients = clients.filter((c) => selectedIds.has(c.id));
+        selectedClients.forEach((client) => {
+          const unitId = client.unit_id;
+          if (!targetsByUnit.has(unitId)) {
+            const unit = units.find(u => u.id === unitId);
+            targetsByUnit.set(unitId, {
+              unitId,
+              unitName: unit?.name || "Unidade",
+              targets: [],
+            });
+          }
+          targetsByUnit.get(unitId)!.targets.push({
+            phone: client.phone,
+            name: client.name,
+            unit_id: unitId,
+          });
+        });
       } else {
         const selectedBarbersList = barbers.filter((b) => selectedBarberIds.has(b.id));
-        targets = selectedBarbersList.map((b) => ({
-          phone: b.phone!,
-          name: b.name,
-        }));
+        selectedBarbersList.forEach((barber) => {
+          const unitId = barber.unit_id;
+          if (!targetsByUnit.has(unitId)) {
+            const unit = units.find(u => u.id === unitId);
+            targetsByUnit.set(unitId, {
+              unitId,
+              unitName: unit?.name || "Unidade",
+              targets: [],
+            });
+          }
+          targetsByUnit.get(unitId)!.targets.push({
+            phone: barber.phone!,
+            name: barber.name,
+            unit_id: unitId,
+          });
+        });
       }
 
-      const { data, error } = await supabase.functions.invoke("send-marketing-campaign", {
-        body: {
-          message_template: message,
-          targets,
-        },
-      });
+      // Send one request per unit
+      const results: { unitName: string; success: boolean; count: number; error?: string }[] = [];
 
-      if (error) {
-        console.error("Error sending campaign:", error);
+      for (const [unitId, { unitName, targets }] of targetsByUnit) {
+        console.log(`Sending campaign to unit ${unitName} with ${targets.length} targets`);
+        
+        const { data, error } = await supabase.functions.invoke("send-marketing-campaign", {
+          body: {
+            unit_id: unitId,
+            message_template: message,
+            targets,
+          },
+        });
+
+        results.push({
+          unitName,
+          success: !error && data?.success,
+          count: targets.length,
+          error: error?.message || data?.error,
+        });
+      }
+
+      // Calculate results
+      const successCount = results.filter(r => r.success).reduce((sum, r) => sum + r.count, 0);
+      const failedUnits = results.filter(r => !r.success);
+
+      if (failedUnits.length > 0 && successCount === 0) {
+        // All failed
         toast({
           title: "Erro ao enviar campanha",
-          description: error.message || "Tente novamente mais tarde.",
+          description: failedUnits.map(f => `${f.unitName}: ${f.error}`).join("; "),
           variant: "destructive",
         });
-        return;
-      }
-
-      toast({
-        title: "Campanha enviada!",
-        description: data?.message || `Mensagem enviada para ${selectedCount} destinatário(s).`,
-      });
-      
-      if (isClientsMode) {
-        setSelectedIds(new Set());
+      } else if (failedUnits.length > 0) {
+        // Partial success
+        toast({
+          title: "Campanha parcialmente enviada",
+          description: `${successCount} mensagem(ns) em processamento. Falha: ${failedUnits.map(f => f.unitName).join(", ")}`,
+          variant: "destructive",
+        });
+        // Clear selections for successful units
+        if (isClientsMode) {
+          setSelectedIds(new Set());
+        } else {
+          setSelectedBarberIds(new Set());
+        }
+        setMessage("");
       } else {
-        setSelectedBarberIds(new Set());
+        // All success
+        toast({
+          title: "Campanha iniciada!",
+          description: `${successCount} mensagem(ns) sendo enviadas em segundo plano. Intervalo de 15-25s entre cada envio para evitar bloqueio.`,
+        });
+        if (isClientsMode) {
+          setSelectedIds(new Set());
+        } else {
+          setSelectedBarberIds(new Set());
+        }
+        setMessage("");
       }
-      setMessage("");
     } catch (err) {
       console.error("Unexpected error:", err);
       toast({
@@ -415,11 +480,11 @@ export function CampaignsTab() {
               onClick={handleSendCampaign}
               disabled={isSending || totalSelected === 0 || !message.trim()}
             >
-              <Send className="mr-2 h-4 w-4" />
-              {isSending
-                ? "Enviando..."
-                : `Enviar Campanha (${totalSelected} ${recipientType === "clients" ? "cliente" : "profissional"}${totalSelected !== 1 ? "s" : ""})`
-              }
+              {isSending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...</>
+              ) : (
+                <><Send className="mr-2 h-4 w-4" /> Enviar Campanha ({totalSelected} {recipientType === "clients" ? "cliente" : "profissional"}{totalSelected !== 1 ? "s" : ""})</>
+              )}
             </Button>
           </CardContent>
         </Card>

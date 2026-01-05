@@ -271,6 +271,50 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_message_logs: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          recipient_name: string | null
+          recipient_phone: string
+          recipient_type: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_name?: string | null
+          recipient_phone: string
+          recipient_type?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_name?: string | null
+          recipient_phone?: string
+          recipient_type?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_message_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cancellation_history: {
         Row: {
           appointment_id: string | null
@@ -474,6 +518,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      marketing_campaigns: {
+        Row: {
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          id: string
+          media_type: string | null
+          media_url: string | null
+          message_template: string
+          sent_count: number
+          status: string
+          total_recipients: number
+          unit_id: string | null
+        }
+        Insert: {
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          message_template: string
+          sent_count?: number
+          status?: string
+          total_recipients?: number
+          unit_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          message_template?: string
+          sent_count?: number
+          status?: string
+          total_recipients?: number
+          unit_id?: string | null
+        }
+        Relationships: []
       }
       message_templates: {
         Row: {
@@ -915,6 +1007,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_campaign_failed: { Args: { cid: string }; Returns: undefined }
+      increment_campaign_sent: { Args: { cid: string }; Returns: undefined }
       user_owns_company: { Args: { p_company_id: string }; Returns: boolean }
       user_owns_unit: { Args: { unit_id: string }; Returns: boolean }
     }

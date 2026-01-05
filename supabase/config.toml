@@ -23,3 +23,9 @@ verify_jwt = true
 
 [functions.link-barber-account]
 verify_jwt = false
+
+[functions.campaign-callback]
+verify_jwt = false
+
+[functions.update-campaign-status]
+verify_jwt = false
