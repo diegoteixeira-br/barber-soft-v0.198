@@ -13,8 +13,6 @@ export function BusinessProfileTab() {
   const [formData, setFormData] = useState<BusinessSettingsInput>({
     business_name: "",
     logo_url: null,
-    opening_time: "09:00",
-    closing_time: "19:00",
   });
 
   useEffect(() => {
@@ -22,8 +20,6 @@ export function BusinessProfileTab() {
       setFormData({
         business_name: settings.business_name || "",
         logo_url: settings.logo_url,
-        opening_time: settings.opening_time || "09:00",
-        closing_time: settings.closing_time || "19:00",
       });
     }
   }, [settings]);
@@ -77,27 +73,6 @@ export function BusinessProfileTab() {
                   onChange={(e) => setFormData(prev => ({ ...prev, business_name: e.target.value }))}
                   placeholder="Ex: Barbearia Premium"
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="opening_time">Horário de Abertura</Label>
-                  <Input
-                    id="opening_time"
-                    type="time"
-                    value={formData.opening_time || "09:00"}
-                    onChange={(e) => setFormData(prev => ({ ...prev, opening_time: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="closing_time">Horário de Fechamento</Label>
-                  <Input
-                    id="closing_time"
-                    type="time"
-                    value={formData.closing_time || "19:00"}
-                    onChange={(e) => setFormData(prev => ({ ...prev, closing_time: e.target.value }))}
-                  />
-                </div>
               </div>
             </div>
           </div>
