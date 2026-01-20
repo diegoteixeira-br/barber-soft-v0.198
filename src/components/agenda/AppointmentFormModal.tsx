@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Trash2, Users } from "lucide-react";
+import { Trash2, Users, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ClientCombobox } from "@/components/clients/ClientCombobox";
 import { ClientFormModal } from "@/components/clients/ClientFormModal";
+import { DependentFormModal } from "@/components/clients/DependentFormModal";
 import { useClients, CreateClientData, Client } from "@/hooks/useClients";
-import { useDependents, ClientDependent } from "@/hooks/useDependents";
+import { useDependents, ClientDependent, CreateDependentData } from "@/hooks/useDependents";
 import type { Barber } from "@/hooks/useBarbers";
 import type { Service } from "@/hooks/useServices";
 import type { Appointment, AppointmentFormData } from "@/hooks/useAppointments";
@@ -65,9 +66,10 @@ export function AppointmentFormModal({
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [selectedDependentId, setSelectedDependentId] = useState<string | null>(null);
+  const [showCreateDependent, setShowCreateDependent] = useState(false);
   
   // Fetch dependents for the selected client
-  const { dependents } = useDependents(selectedClientId || undefined);
+  const { dependents, createDependent } = useDependents(selectedClientId || undefined);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -169,6 +171,17 @@ export function AppointmentFormModal({
     });
   };
 
+  const handleDependentCreated = (data: CreateDependentData) => {
+    createDependent.mutate(data, {
+      onSuccess: (newDependent) => {
+        setShowCreateDependent(false);
+        setSelectedDependentId(newDependent.id);
+        form.setValue("client_name", newDependent.name);
+        form.setValue("client_birth_date", newDependent.birth_date || "");
+      },
+    });
+  };
+
   const handleSubmit = (values: FormValues) => {
     const [year, month, day] = values.date.split("-").map(Number);
     const [hours, minutes] = values.time.split(":").map(Number);
@@ -232,12 +245,25 @@ export function AppointmentFormModal({
                   </div>
 
                   {/* Dependent Selector */}
-                  {dependents && dependents.length > 0 && (
-                    <div className="space-y-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <Users className="h-4 w-4" />
                         Agendar para
                       </label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => setShowCreateDependent(true)}
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Adicionar dependente
+                      </Button>
+                    </div>
+                  {dependents && dependents.length > 0 ? (
+                    <>
                       <Select
                         value={selectedDependentId || "titular"}
                         onValueChange={handleDependentSelect}
