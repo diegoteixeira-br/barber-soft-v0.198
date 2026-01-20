@@ -809,6 +809,70 @@ async function handleCreate(supabase: any, body: any, corsHeaders: any) {
     );
   }
 
+  // === SUPORTE A DEPENDENTES ===
+  // Se is_dependent = true e dependent_name fornecido, buscar ou criar dependente
+  const isDependent = body.is_dependent === true || body.is_dependent === 'true';
+  const dependentName = sanitizeText(body.dependent_name || '');
+  const dependentRelationship = sanitizeText(body.dependent_relationship || body.relationship || '');
+  const dependentBirthDate = body.dependent_birth_date || null;
+  
+  let dependentId: string | null = null;
+  let appointmentClientName = clientName; // Nome que vai aparecer no agendamento
+  
+  if (isDependent && dependentName && clientData?.id) {
+    console.log(`Agendamento para dependente: "${dependentName}" (Titular: ${clientName})`);
+    
+    // Buscar dependente existente pelo nome (vinculado ao cliente titular)
+    const { data: existingDependents, error: depSearchError } = await supabase
+      .from('client_dependents')
+      .select('id, name, relationship, birth_date')
+      .eq('client_id', clientData.id)
+      .eq('unit_id', unit_id)
+      .ilike('name', dependentName);
+    
+    if (depSearchError) {
+      console.error('Erro ao buscar dependente:', depSearchError);
+    }
+    
+    if (existingDependents && existingDependents.length > 0) {
+      // Dependente já existe
+      dependentId = existingDependents[0].id;
+      appointmentClientName = existingDependents[0].name;
+      console.log(`Dependente encontrado: ${existingDependents[0].name} (ID: ${dependentId})`);
+    } else {
+      // Criar novo dependente
+      console.log(`Criando novo dependente: "${dependentName}" para cliente ${clientData.id}`);
+      const { data: newDependent, error: depCreateError } = await supabase
+        .from('client_dependents')
+        .insert({
+          client_id: clientData.id,
+          unit_id,
+          company_id: company_id || null,
+          name: dependentName,
+          relationship: dependentRelationship || null,
+          birth_date: dependentBirthDate || null,
+          notes: null
+        })
+        .select('id, name')
+        .single();
+      
+      if (depCreateError) {
+        console.error('Erro ao criar dependente:', depCreateError);
+        // Continuar mesmo se falhar - usar nome informado
+        appointmentClientName = dependentName;
+      } else {
+        dependentId = newDependent.id;
+        appointmentClientName = newDependent.name;
+        console.log(`Novo dependente criado: ${newDependent.name} (ID: ${dependentId})`);
+      }
+    }
+  } else if (isDependent && dependentName) {
+    // is_dependent = true mas não temos clientData.id (cliente não cadastrado)
+    // Usar o nome do dependente no agendamento sem vincular
+    appointmentClientName = dependentName;
+    console.log(`Dependente informado mas titular não cadastrado. Usando nome: ${dependentName}`);
+  }
+
   // Criar o agendamento (source = 'whatsapp' pois veio pela API)
   const { data: appointment, error: createError } = await supabase
     .from('appointments')
@@ -817,14 +881,16 @@ async function handleCreate(supabase: any, body: any, corsHeaders: any) {
       company_id: company_id || barber.company_id,
       barber_id: barber.id,
       service_id: selectedService.id,
-      client_name: clientName,
-      client_phone: clientPhone || null,
-      client_birth_date: clientBirthDate || null,
+      client_name: appointmentClientName, // Nome do dependente ou titular
+      client_phone: clientPhone || null, // Sempre telefone do titular (responsável)
+      client_birth_date: isDependent ? (dependentBirthDate || null) : (clientBirthDate || null),
       start_time: startTime.toISOString(),
       end_time: endTime.toISOString(),
       total_price: selectedService.price,
       status: 'pending',
-      source: 'whatsapp'
+      source: 'whatsapp',
+      is_dependent: isDependent,
+      dependent_id: dependentId
     })
     .select()
     .single();
@@ -917,9 +983,18 @@ async function handleCreate(supabase: any, body: any, corsHeaders: any) {
         tags: clientData.tags,
         is_new: clientCreated
       } : null,
+      dependent: dependentId ? {
+        id: dependentId,
+        name: appointmentClientName,
+        relationship: dependentRelationship || null
+      } : null,
       appointment: {
         id: appointment.id,
         client_name: appointment.client_name,
+        is_dependent: isDependent,
+        dependent_id: dependentId,
+        responsible_name: isDependent ? clientName : null,
+        responsible_phone: clientPhone,
         barber: barber.name,
         service: selectedService.name,
         start_time: appointment.start_time,
