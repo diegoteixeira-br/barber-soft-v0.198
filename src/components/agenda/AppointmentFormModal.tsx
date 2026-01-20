@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { Trash2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ClientCombobox } from "@/components/clients/ClientCombobox";
 import { ClientFormModal } from "@/components/clients/ClientFormModal";
 import { useClients, CreateClientData, Client } from "@/hooks/useClients";
+import { useDependents, ClientDependent } from "@/hooks/useDependents";
 import type { Barber } from "@/hooks/useBarbers";
 import type { Service } from "@/hooks/useServices";
 import type { Appointment, AppointmentFormData } from "@/hooks/useAppointments";
@@ -63,6 +64,10 @@ export function AppointmentFormModal({
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
+  const [selectedDependentId, setSelectedDependentId] = useState<string | null>(null);
+  
+  // Fetch dependents for the selected client
+  const { dependents } = useDependents(selectedClientId || undefined);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -115,14 +120,35 @@ export function AppointmentFormModal({
   const handleClientSelect = (client: Client | null) => {
     if (client) {
       setSelectedClientId(client.id);
+      setSelectedDependentId(null); // Reset dependent selection when client changes
       form.setValue("client_name", client.name);
       form.setValue("client_phone", client.phone);
       form.setValue("client_birth_date", client.birth_date || "");
     } else {
       setSelectedClientId(null);
+      setSelectedDependentId(null);
       form.setValue("client_name", "");
       form.setValue("client_phone", "");
       form.setValue("client_birth_date", "");
+    }
+  };
+
+  const handleDependentSelect = (dependentId: string) => {
+    if (dependentId === "titular") {
+      setSelectedDependentId(null);
+      // Reset to client's data
+      const client = clients.find(c => c.id === selectedClientId);
+      if (client) {
+        form.setValue("client_name", client.name);
+        form.setValue("client_birth_date", client.birth_date || "");
+      }
+    } else {
+      setSelectedDependentId(dependentId);
+      const dependent = dependents?.find(d => d.id === dependentId);
+      if (dependent) {
+        form.setValue("client_name", dependent.name);
+        form.setValue("client_birth_date", dependent.birth_date || "");
+      }
     }
   };
 
@@ -156,6 +182,8 @@ export function AppointmentFormModal({
       service_id: values.service_id,
       start_time: startTime,
       notes: values.notes,
+      is_dependent: !!selectedDependentId,
+      dependent_id: selectedDependentId,
     });
   };
 
@@ -195,10 +223,53 @@ export function AppointmentFormModal({
               />
 
               {selectedClientId && (
-                <div className="text-sm text-muted-foreground bg-secondary/50 rounded-md p-3">
-                  <p><strong>Telefone:</strong> {form.watch("client_phone") || "Não informado"}</p>
-                  {form.watch("client_birth_date") && (
-                    <p><strong>Nascimento:</strong> {form.watch("client_birth_date")?.split('-').reverse().join('/')}</p>
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground bg-secondary/50 rounded-md p-3">
+                    <p><strong>Telefone:</strong> {form.watch("client_phone") || "Não informado"}</p>
+                    {form.watch("client_birth_date") && (
+                      <p><strong>Nascimento:</strong> {form.watch("client_birth_date")?.split('-').reverse().join('/')}</p>
+                    )}
+                  </div>
+
+                  {/* Dependent Selector */}
+                  {dependents && dependents.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Agendar para
+                      </label>
+                      <Select
+                        value={selectedDependentId || "titular"}
+                        onValueChange={handleDependentSelect}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione quem será atendido" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="titular">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{clients.find(c => c.id === selectedClientId)?.name}</span>
+                              <span className="text-muted-foreground text-xs">(Titular)</span>
+                            </div>
+                          </SelectItem>
+                          {dependents.map((dependent) => (
+                            <SelectItem key={dependent.id} value={dependent.id}>
+                              <div className="flex items-center gap-2">
+                                <span>{dependent.name}</span>
+                                {dependent.relationship && (
+                                  <span className="text-muted-foreground text-xs">({dependent.relationship})</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedDependentId && (
+                        <p className="text-xs text-muted-foreground">
+                          O agendamento será registrado para o dependente, mas o contato será feito com o titular.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

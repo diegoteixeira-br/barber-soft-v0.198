@@ -44,6 +44,8 @@ export interface AppointmentFormData {
   service_id: string;
   start_time: Date;
   notes?: string;
+  is_dependent?: boolean;
+  dependent_id?: string | null;
 }
 
 export interface QuickServiceFormData {
@@ -210,6 +212,8 @@ export function useAppointments(startDate?: Date, endDate?: Date, barberId?: str
           total_price: service.price,
           notes: data.notes || null,
           status: "pending",
+          is_dependent: data.is_dependent || false,
+          dependent_id: data.dependent_id || null,
         })
         .select()
         .single();
