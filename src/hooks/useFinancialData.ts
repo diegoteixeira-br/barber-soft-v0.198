@@ -12,12 +12,14 @@ export interface FinancialAppointment {
   total_price: number;
   status: string;
   payment_method: string | null;
+  notes: string | null;
   barber: {
     id: string;
     name: string;
     commission_rate: number | null;
     debit_card_fee_percent: number | null;
     credit_card_fee_percent: number | null;
+    calendar_color: string | null;
   } | null;
   service: {
     id: string;
@@ -50,7 +52,8 @@ export function useFinancialData(dateRange?: DateRange, barberId?: string | null
           total_price,
           status,
           payment_method,
-          barber:barbers(id, name, commission_rate, debit_card_fee_percent, credit_card_fee_percent),
+          notes,
+          barber:barbers(id, name, commission_rate, debit_card_fee_percent, credit_card_fee_percent, calendar_color),
           service:services(id, name, price)
         `)
         .eq("unit_id", currentUnitId)

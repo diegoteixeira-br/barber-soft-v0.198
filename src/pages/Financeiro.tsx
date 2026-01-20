@@ -4,7 +4,8 @@ import { CashFlowTab } from "@/components/financeiro/CashFlowTab";
 import { CommissionReportTab } from "@/components/financeiro/CommissionReportTab";
 import { ExpensesTab } from "@/components/financeiro/ExpensesTab";
 import { InventoryTab } from "@/components/financeiro/InventoryTab";
-import { DollarSign, FileText, TrendingDown, Package } from "lucide-react";
+import { CourtesyReportTab } from "@/components/financeiro/CourtesyReportTab";
+import { DollarSign, FileText, TrendingDown, Package, Gift } from "lucide-react";
 
 export default function Financeiro() {
   return (
@@ -33,6 +34,10 @@ export default function Financeiro() {
               <FileText className="h-4 w-4" />
               Comissões
             </TabsTrigger>
+            <TabsTrigger value="courtesy" className="flex items-center gap-2">
+              <Gift className="h-4 w-4" />
+              Cortesias
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="cash-flow" className="mt-6">
@@ -49,6 +54,10 @@ export default function Financeiro() {
 
           <TabsContent value="commission" className="mt-6">
             <CommissionReportTab />
+          </TabsContent>
+
+          <TabsContent value="courtesy" className="mt-6">
+            <CourtesyReportTab />
           </TabsContent>
         </Tabs>
       </div>
