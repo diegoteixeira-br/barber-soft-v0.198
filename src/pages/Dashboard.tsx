@@ -6,6 +6,7 @@ import { RevenueBarChart } from "@/components/dashboard/RevenueBarChart";
 import { ServicesPieChart } from "@/components/dashboard/ServicesPieChart";
 import { TopBarberCard } from "@/components/dashboard/TopBarberCard";
 import { UpcomingAppointmentsList } from "@/components/dashboard/UpcomingAppointmentsList";
+import { FinancialOverviewChart } from "@/components/dashboard/FinancialOverviewChart";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -15,7 +16,9 @@ export default function Dashboard() {
     last7DaysRevenue, 
     popularServices, 
     topBarbers, 
-    upcomingAppointments, 
+    upcomingAppointments,
+    financialOverviewWeek,
+    financialOverviewMonth,
     isLoading 
   } = useDashboardData();
 
@@ -74,6 +77,13 @@ export default function Dashboard() {
             isLoading={isLoading}
           />
         </div>
+
+        {/* Financial Overview - Full Width */}
+        <FinancialOverviewChart 
+          weekData={financialOverviewWeek} 
+          monthData={financialOverviewMonth} 
+          isLoading={isLoading} 
+        />
 
         {/* Charts Row */}
         <div className="grid gap-6 lg:grid-cols-2">

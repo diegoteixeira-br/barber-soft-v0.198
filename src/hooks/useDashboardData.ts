@@ -4,7 +4,7 @@ import { useCurrentUnit } from "@/contexts/UnitContext";
 import { 
   startOfDay, endOfDay, startOfWeek, endOfWeek, 
   startOfMonth, endOfMonth, subDays, format, 
-  isSameDay, subMonths 
+  isSameDay, subMonths, eachDayOfInterval 
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -49,6 +49,14 @@ export interface UpcomingAppointment {
   status: string;
 }
 
+export interface DailyFinancialData {
+  date: string;
+  label: string;
+  revenue: number;
+  expenses: number;
+  profit: number;
+}
+
 const SERVICE_COLORS = [
   "hsl(43, 56%, 52%)",   // Gold
   "hsl(25, 100%, 50%)",  // Orange
@@ -77,8 +85,6 @@ export function useDashboardData() {
     queryFn: async () => {
       if (!currentUnitId) return [];
 
-      const sevenDaysAgo = subDays(now, 7);
-
       const { data, error } = await supabase
         .from("appointments")
         .select(`
@@ -102,6 +108,27 @@ export function useDashboardData() {
         barber: Array.isArray(item.barber) ? item.barber[0] : item.barber,
         service: Array.isArray(item.service) ? item.service[0] : item.service,
       }));
+    },
+    enabled: !!currentUnitId,
+  });
+
+  // Fetch expenses for financial overview
+  const { data: recentExpenses = [], isLoading: isLoadingExpenses } = useQuery({
+    queryKey: ["dashboard-expenses", currentUnitId],
+    queryFn: async () => {
+      if (!currentUnitId) return [];
+
+      const thirtyDaysAgo = subDays(now, 30);
+
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("unit_id", currentUnitId)
+        .gte("expense_date", format(thirtyDaysAgo, "yyyy-MM-dd"))
+        .order("expense_date", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!currentUnitId,
   });
@@ -284,13 +311,69 @@ export function useDashboardData() {
     status: apt.status,
   }));
 
+  // Calculate financial overview for the week (last 7 days)
+  const financialOverviewWeek: DailyFinancialData[] = Array.from({ length: 7 }, (_, i) => {
+    const date = subDays(now, 6 - i);
+    const dateStr = format(date, "yyyy-MM-dd");
+    const dayStart = startOfDay(date);
+    const dayEnd = endOfDay(date);
+
+    const dayRevenue = completedAppointments
+      .filter(a => {
+        const aptDate = new Date(a.start_time);
+        return aptDate >= dayStart && aptDate <= dayEnd;
+      })
+      .reduce((sum, a) => sum + Number(a.total_price), 0);
+
+    const dayExpenses = recentExpenses
+      .filter(e => e.expense_date === dateStr)
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+
+    return {
+      date: dateStr,
+      label: format(date, "EEE", { locale: ptBR }).slice(0, 3),
+      revenue: dayRevenue,
+      expenses: dayExpenses,
+      profit: dayRevenue - dayExpenses,
+    };
+  });
+
+  // Calculate financial overview for the current month
+  const monthDays = eachDayOfInterval({ start: monthStart, end: now > monthEnd ? monthEnd : now });
+  const financialOverviewMonth: DailyFinancialData[] = monthDays.map(date => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const dayStart = startOfDay(date);
+    const dayEnd = endOfDay(date);
+
+    const dayRevenue = completedAppointments
+      .filter(a => {
+        const aptDate = new Date(a.start_time);
+        return aptDate >= dayStart && aptDate <= dayEnd;
+      })
+      .reduce((sum, a) => sum + Number(a.total_price), 0);
+
+    const dayExpenses = recentExpenses
+      .filter(e => e.expense_date === dateStr)
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+
+    return {
+      date: dateStr,
+      label: format(date, "dd", { locale: ptBR }),
+      revenue: dayRevenue,
+      expenses: dayExpenses,
+      profit: dayRevenue - dayExpenses,
+    };
+  });
+
   return {
     metrics,
     last7DaysRevenue,
     popularServices,
     topBarbers,
     upcomingAppointments: formattedUpcoming,
-    isLoading: isLoadingCompleted || isLoadingUpcoming,
+    financialOverviewWeek,
+    financialOverviewMonth,
+    isLoading: isLoadingCompleted || isLoadingUpcoming || isLoadingExpenses,
   };
 }
 
