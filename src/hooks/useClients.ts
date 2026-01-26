@@ -20,6 +20,9 @@ export interface Client {
   marketing_opt_out: boolean | null;
   opted_out_at: string | null;
   dependents_count?: number;
+  loyalty_cuts: number;
+  available_courtesies: number;
+  total_courtesies_earned: number;
 }
 
 export type CreateClientData = {

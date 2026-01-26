@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Banknote, Smartphone, CreditCard, Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type PaymentMethod = "cash" | "pix" | "debit_card" | "credit_card" | "courtesy";
+export type PaymentMethod = "cash" | "pix" | "debit_card" | "credit_card" | "courtesy" | "fidelity_courtesy";
 
 interface PaymentMethodModalProps {
   open: boolean;
@@ -19,6 +19,8 @@ interface PaymentMethodModalProps {
   onConfirm: (paymentMethod: PaymentMethod, courtesyReason?: string) => void;
   totalPrice: number;
   isLoading?: boolean;
+  availableCourtesies?: number;
+  onUseFidelityCourtesy?: () => void;
 }
 
 const paymentMethods: { value: PaymentMethod; label: string; icon: React.ElementType; color: string }[] = [
@@ -35,6 +37,8 @@ export function PaymentMethodModal({
   onConfirm,
   totalPrice,
   isLoading,
+  availableCourtesies = 0,
+  onUseFidelityCourtesy,
 }: PaymentMethodModalProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [courtesyReason, setCourtesyReason] = useState("");
@@ -48,6 +52,9 @@ export function PaymentMethodModal({
 
   const handleConfirm = () => {
     if (selectedMethod) {
+      if (selectedMethod === "fidelity_courtesy" && onUseFidelityCourtesy) {
+        onUseFidelityCourtesy();
+      }
       onConfirm(selectedMethod, selectedMethod === "courtesy" ? courtesyReason.trim() : undefined);
       setSelectedMethod(null);
       setCourtesyReason("");
@@ -63,6 +70,7 @@ export function PaymentMethodModal({
   };
 
   const isCourtesyValid = selectedMethod !== "courtesy" || courtesyReason.trim().length > 0;
+  const isFidelityCourtesy = selectedMethod === "fidelity_courtesy";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -78,14 +86,41 @@ export function PaymentMethodModal({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Fidelity Courtesy Option */}
+          {availableCourtesies > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedMethod("fidelity_courtesy")}
+              className={cn(
+                "w-full flex items-center gap-3 rounded-lg border-2 p-4 transition-all",
+                "bg-green-500/10 border-green-500/30 hover:bg-green-500/20",
+                selectedMethod === "fidelity_courtesy" && "ring-2 ring-green-500 ring-offset-2 ring-offset-background"
+              )}
+            >
+              <div className="p-2 rounded-full bg-green-500/20">
+                <Gift className="h-6 w-6 text-green-500" />
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-semibold text-green-400">Usar Cortesia de Fidelidade</p>
+                <p className="text-xs text-green-400/70">
+                  {availableCourtesies} cortesia{availableCourtesies > 1 ? "s" : ""} disponível
+                </p>
+              </div>
+              <span className="text-green-400 font-bold">GRÁTIS</span>
+            </button>
+          )}
+
           {/* Valor */}
           <div className="rounded-lg bg-muted/50 p-4 text-center">
             <p className="text-sm text-muted-foreground">Valor a receber</p>
             <p className="text-2xl font-bold text-foreground">
-              {selectedMethod === "courtesy" ? formatCurrency(0) : formatCurrency(totalPrice)}
+              {selectedMethod === "courtesy" || isFidelityCourtesy ? formatCurrency(0) : formatCurrency(totalPrice)}
             </p>
             {selectedMethod === "courtesy" && (
               <p className="text-xs text-pink-500 mt-1">Serviço oferecido como cortesia</p>
+            )}
+            {isFidelityCourtesy && (
+              <p className="text-xs text-green-500 mt-1">Cortesia de fidelidade</p>
             )}
           </div>
 
@@ -166,6 +201,7 @@ export function PaymentBadge({ method }: { method: string | null }) {
     debit_card: { label: "Débito", icon: CreditCard, className: "bg-orange-500/10 text-orange-500" },
     credit_card: { label: "Crédito", icon: CreditCard, className: "bg-purple-500/10 text-purple-500" },
     courtesy: { label: "Cortesia", icon: Gift, className: "bg-pink-500/10 text-pink-500" },
+    fidelity_courtesy: { label: "Fidelidade", icon: Gift, className: "bg-green-500/10 text-green-500" },
   };
 
   const methodConfig = config[method];

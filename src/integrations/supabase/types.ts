@@ -370,6 +370,8 @@ export type Database = {
           created_at: string | null
           credit_card_fee_percent: number | null
           debit_card_fee_percent: number | null
+          fidelity_cuts_threshold: number | null
+          fidelity_program_enabled: boolean | null
           id: string
           late_cancellation_fee_percent: number | null
           logo_url: string | null
@@ -400,6 +402,8 @@ export type Database = {
           created_at?: string | null
           credit_card_fee_percent?: number | null
           debit_card_fee_percent?: number | null
+          fidelity_cuts_threshold?: number | null
+          fidelity_program_enabled?: boolean | null
           id?: string
           late_cancellation_fee_percent?: number | null
           logo_url?: string | null
@@ -430,6 +434,8 @@ export type Database = {
           created_at?: string | null
           credit_card_fee_percent?: number | null
           debit_card_fee_percent?: number | null
+          fidelity_cuts_threshold?: number | null
+          fidelity_program_enabled?: boolean | null
           id?: string
           late_cancellation_fee_percent?: number | null
           logo_url?: string | null
@@ -614,49 +620,58 @@ export type Database = {
       }
       clients: {
         Row: {
+          available_courtesies: number | null
           birth_date: string | null
           company_id: string | null
           created_at: string | null
           id: string
           last_visit_at: string | null
+          loyalty_cuts: number | null
           marketing_opt_out: boolean | null
           name: string
           notes: string | null
           opted_out_at: string | null
           phone: string
           tags: string[] | null
+          total_courtesies_earned: number | null
           total_visits: number | null
           unit_id: string
           updated_at: string | null
         }
         Insert: {
+          available_courtesies?: number | null
           birth_date?: string | null
           company_id?: string | null
           created_at?: string | null
           id?: string
           last_visit_at?: string | null
+          loyalty_cuts?: number | null
           marketing_opt_out?: boolean | null
           name: string
           notes?: string | null
           opted_out_at?: string | null
           phone: string
           tags?: string[] | null
+          total_courtesies_earned?: number | null
           total_visits?: number | null
           unit_id: string
           updated_at?: string | null
         }
         Update: {
+          available_courtesies?: number | null
           birth_date?: string | null
           company_id?: string | null
           created_at?: string | null
           id?: string
           last_visit_at?: string | null
+          loyalty_cuts?: number | null
           marketing_opt_out?: boolean | null
           name?: string
           notes?: string | null
           opted_out_at?: string | null
           phone?: string
           tags?: string[] | null
+          total_courtesies_earned?: number | null
           total_visits?: number | null
           unit_id?: string
           updated_at?: string | null

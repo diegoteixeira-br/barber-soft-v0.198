@@ -16,6 +16,8 @@ export interface BusinessSettings {
   debit_card_fee_percent: number | null;
   credit_card_fee_percent: number | null;
   commission_calculation_base: 'gross' | 'net' | null;
+  fidelity_program_enabled: boolean | null;
+  fidelity_cuts_threshold: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +34,8 @@ export interface BusinessSettingsInput {
   debit_card_fee_percent?: number | null;
   credit_card_fee_percent?: number | null;
   commission_calculation_base?: 'gross' | 'net' | null;
+  fidelity_program_enabled?: boolean | null;
+  fidelity_cuts_threshold?: number | null;
 }
 
 export function useBusinessSettings() {

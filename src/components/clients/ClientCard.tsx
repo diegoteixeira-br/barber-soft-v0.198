@@ -1,4 +1,4 @@
-import { Phone, Calendar, Clock, Edit2, Trash2, Building2, BellOff, Eye, Users } from "lucide-react";
+import { Phone, Calendar, Clock, Edit2, Trash2, Building2, BellOff, Eye, Users, Gift, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Client } from "@/hooks/useClients";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 
 interface ClientCardProps {
   client: Client;
@@ -16,6 +17,10 @@ interface ClientCardProps {
 }
 
 export function ClientCard({ client, onEdit, onDelete, onView, showUnit = false }: ClientCardProps) {
+  const { settings } = useBusinessSettings();
+  const fidelityEnabled = settings?.fidelity_program_enabled ?? false;
+  const fidelityThreshold = settings?.fidelity_cuts_threshold ?? 10;
+
   const initials = client.name
     .split(" ")
     .map((n) => n[0])
@@ -110,6 +115,29 @@ export function ClientCard({ client, onEdit, onDelete, onView, showUnit = false 
             <span className="font-medium text-foreground">{client.total_visits}</span> visitas
           </div>
         </div>
+
+        {/* Fidelity Progress */}
+        {fidelityEnabled && (
+          <div className="mt-3 flex items-center gap-2">
+            {client.available_courtesies > 0 ? (
+              <Badge
+                variant="outline"
+                className="bg-green-500/20 text-green-400 border-green-500/30 gap-1"
+              >
+                <Sparkles className="h-3 w-3" />
+                {client.available_courtesies} cortesia{client.available_courtesies > 1 ? "s" : ""} disponível
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="bg-primary/20 text-primary border-primary/30 gap-1"
+              >
+                <Gift className="h-3 w-3" />
+                {client.loyalty_cuts || 0}/{fidelityThreshold} cortes
+              </Badge>
+            )}
+          </div>
+        )}
 
         {(client.dependents_count && client.dependents_count > 0) || client.marketing_opt_out || (client.tags && client.tags.length > 0) ? (
           <div className="mt-3 flex flex-wrap gap-1">

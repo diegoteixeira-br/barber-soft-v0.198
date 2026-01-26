@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Phone, User, Scissors, Clock, DollarSign, Calendar, Edit, Trash2, CheckCircle, XCircle, Cake, UserX, AlertTriangle } from "lucide-react";
@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { StatusBadge, getNextStatus } from "./StatusBadge";
 import { PaymentMethodModal, type PaymentMethod } from "@/components/financeiro/PaymentMethodModal";
+import { useFidelityCourtesy } from "@/hooks/useFidelityCourtesy";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import type { Appointment } from "@/hooks/useAppointments";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -38,6 +40,20 @@ export function AppointmentDetailsModal({
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isDeleteWithReasonOpen, setIsDeleteWithReasonOpen] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
+  const [availableCourtesies, setAvailableCourtesies] = useState(0);
+  
+  const { settings } = useBusinessSettings();
+  const { useCourtesy, getClientCourtesies } = useFidelityCourtesy();
+  const fidelityEnabled = settings?.fidelity_program_enabled ?? false;
+
+  // Fetch client's available courtesies when modal opens
+  useEffect(() => {
+    if (open && appointment?.client_phone && appointment?.unit_id && fidelityEnabled) {
+      getClientCourtesies(appointment.client_phone, appointment.unit_id).then(setAvailableCourtesies);
+    } else {
+      setAvailableCourtesies(0);
+    }
+  }, [open, appointment?.client_phone, appointment?.unit_id, fidelityEnabled]);
   
   if (!appointment) return null;
 
@@ -52,8 +68,21 @@ export function AppointmentDetailsModal({
   };
 
   const handlePaymentConfirm = (paymentMethod: PaymentMethod, courtesyReason?: string) => {
-    onStatusChange("completed", paymentMethod, courtesyReason);
+    // If using fidelity courtesy, add automatic reason
+    const reason = paymentMethod === "fidelity_courtesy" 
+      ? `[Fidelidade] Cortesia por ${settings?.fidelity_cuts_threshold || 10} cortes acumulados`
+      : courtesyReason;
+    onStatusChange("completed", paymentMethod, reason);
     setIsPaymentModalOpen(false);
+  };
+
+  const handleUseFidelityCourtesy = () => {
+    if (appointment.client_phone && appointment.unit_id) {
+      useCourtesy.mutate({
+        clientPhone: appointment.client_phone,
+        unitId: appointment.unit_id,
+      });
+    }
   };
 
   const getNextStatusLabel = (status: AppointmentStatus) => {
@@ -249,6 +278,8 @@ export function AppointmentDetailsModal({
         onConfirm={handlePaymentConfirm}
         totalPrice={appointment.total_price}
         isLoading={isLoading}
+        availableCourtesies={fidelityEnabled ? availableCourtesies : 0}
+        onUseFidelityCourtesy={handleUseFidelityCourtesy}
       />
 
       {/* Delete with Reason Modal - for confirmed/completed appointments */}

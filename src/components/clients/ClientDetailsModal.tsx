@@ -3,11 +3,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Phone, Calendar, Clock, Edit2, Building2, BellOff, Users, FileText } from "lucide-react";
+import { Phone, Calendar, Clock, Edit2, Building2, BellOff, Users, FileText, Gift, Sparkles } from "lucide-react";
 import { Client } from "@/hooks/useClients";
 import { DependentsList } from "./DependentsList";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useBusinessSettings } from "@/hooks/useBusinessSettings";
+import { Progress } from "@/components/ui/progress";
 
 interface ClientDetailsModalProps {
   open: boolean;
@@ -31,6 +33,10 @@ export function ClientDetailsModal({
   onEdit,
   showUnit = false,
 }: ClientDetailsModalProps) {
+  const { settings } = useBusinessSettings();
+  const fidelityEnabled = settings?.fidelity_program_enabled ?? false;
+  const fidelityThreshold = settings?.fidelity_cuts_threshold ?? 10;
+
   if (!client) return null;
 
   const initials = client.name
@@ -146,6 +152,50 @@ export function ClientDetailsModal({
             </div>
           </div>
         </div>
+
+        {/* Fidelity Progress Section */}
+        {fidelityEnabled && (
+          <div className="rounded-lg border border-border bg-secondary/30 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Gift className="h-4 w-4 text-primary" />
+                Programa de Fidelidade
+              </h3>
+              {client.available_courtesies > 0 && (
+                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  {client.available_courtesies} cortesia{client.available_courtesies > 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progresso atual</span>
+                <span className="font-medium text-foreground">
+                  {client.loyalty_cuts || 0} / {fidelityThreshold} cortes
+                </span>
+              </div>
+              <Progress 
+                value={((client.loyalty_cuts || 0) / fidelityThreshold) * 100} 
+                className="h-2"
+              />
+              <p className="text-xs text-muted-foreground">
+                {client.loyalty_cuts >= fidelityThreshold - 1 
+                  ? "Falta apenas 1 corte para ganhar uma cortesia! 🎉" 
+                  : `Faltam ${fidelityThreshold - (client.loyalty_cuts || 0)} cortes para a próxima cortesia`}
+              </p>
+            </div>
+
+            {client.total_courtesies_earned > 0 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground">
+                  Total de cortesias já conquistadas: <span className="font-medium text-foreground">{client.total_courtesies_earned}</span>
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tabs */}
         <Tabs defaultValue="dependents" className="w-full">
