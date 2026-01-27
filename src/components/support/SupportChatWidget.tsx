@@ -42,7 +42,7 @@ export function SupportChatWidget({ isOpen, onClose }: SupportChatWidgetProps) {
   const welcomeMessage = {
     id: "welcome",
     role: "assistant" as const,
-    content: "Olá! 👋 Sou o Jackson, seu assistente virtual do BarberSoft. Estou aqui para te ajudar com qualquer dúvida sobre o sistema!\n\nPosso te ajudar com:\n- **Atendimento Rápido** (cortes fora do horário)\n- **Conexão do WhatsApp**\n- **Agenda e agendamentos**\n- **Financeiro e comissões**\n- **Marketing e campanhas**\n\nComo posso te ajudar?",
+    content: "Olá! 👋 Sou o Jackson, seu assistente do BarberSoft.\n\nMe conta sua dúvida - posso ajudar com qualquer funcionalidade do sistema! 💈",
     timestamp: new Date(),
   };
 
