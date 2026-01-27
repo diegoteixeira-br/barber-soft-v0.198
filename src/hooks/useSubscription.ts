@@ -3,9 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export interface SubscriptionStatus {
-  plan_status: "trial" | "active" | "cancelled" | "overdue" | "partner" | null;
+  plan_status: "trial" | "active" | "cancelled" | "overdue" | "partner" | "expired_partner" | null;
   plan_type: "inicial" | "profissional" | "franquias" | null;
   trial_ends_at: string | null;
+  partner_ends_at: string | null;
   is_partner: boolean;
   days_remaining: number | null;
 }
@@ -32,18 +33,25 @@ export function useSubscription() {
       }
 
       if (data) {
-        // Calculate days remaining for trial
+        // Calculate days remaining for trial or partner
         let daysRemaining: number | null = null;
         if (data.trial_ends_at) {
           const trialEnd = new Date(data.trial_ends_at);
           const now = new Date();
           daysRemaining = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+        } else if (data.partner_ends_at) {
+          const partnerEnd = new Date(data.partner_ends_at);
+          const now = new Date();
+          daysRemaining = Math.max(0, Math.ceil((partnerEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+        } else if (data.days_remaining !== undefined) {
+          daysRemaining = data.days_remaining;
         }
 
         setStatus({
           plan_status: data.plan_status || null,
           plan_type: data.plan_type || null,
           trial_ends_at: data.trial_ends_at || null,
+          partner_ends_at: data.partner_ends_at || null,
           is_partner: data.is_partner || false,
           days_remaining: daysRemaining,
         });

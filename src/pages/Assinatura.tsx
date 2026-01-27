@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useSubscription } from "@/hooks/useSubscription";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useSuperAdmin } from "@/hooks/useSuperAdmin";
 import { 
   Crown, 
@@ -186,15 +188,33 @@ export default function Assinatura() {
         {!isSuperAdmin && isPartner && (
           <Card className="border-gold/30 bg-gold/5">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
+              <div className="flex items-start gap-4">
                 <div className="p-3 rounded-full bg-gold/20">
                   <Crown className="h-6 w-6 text-gold" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gold">Parceiro BarberSoft</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Você tem acesso especial como parceiro. Obrigado por fazer parte da nossa jornada!
-                  </p>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-gold">Parceiro BarberSoft</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Você tem acesso especial como parceiro. Obrigado por fazer parte da nossa jornada!
+                    </p>
+                  </div>
+                  
+                  {status?.partner_ends_at && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-gold/10">
+                      <Calendar className="h-4 w-4 text-gold" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gold">
+                          Acesso válido até: {format(new Date(status.partner_ends_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                        </p>
+                        {daysRemaining !== null && daysRemaining > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {daysRemaining} dia{daysRemaining > 1 ? 's' : ''} restante{daysRemaining > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
