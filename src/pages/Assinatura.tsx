@@ -427,8 +427,8 @@ export default function Assinatura() {
                   </Button>
                 )}
 
-                {/* Cancel Button */}
-                {currentPlan && !isPartner && (
+                {/* Cancel Button - Visible for active subscriptions */}
+                {status?.plan_status === "active" && !isPartner && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="outline" className="w-full justify-start gap-2 text-red-500 hover:text-red-400 hover:bg-red-500/10">
@@ -455,6 +455,17 @@ export default function Assinatura() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                )}
+
+                {/* Choose Plan Button - Visible for trial/cancelled/no plan */}
+                {(!currentPlan || status?.plan_status === "trial" || status?.plan_status === "cancelled") && (
+                  <Button 
+                    className="w-full justify-start gap-2"
+                    onClick={() => window.location.href = "/escolher-plano"}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Escolher um Plano
+                  </Button>
                 )}
               </div>
             </CardContent>

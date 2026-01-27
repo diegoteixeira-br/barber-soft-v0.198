@@ -299,8 +299,18 @@ export function AccountTab() {
                 </div>
               )}
 
-              {/* Manage Subscription Button */}
-              {!isSuperAdmin && !isPartner && status?.plan_status && status.plan_status !== "trial" && (
+              {/* View Subscription Page Button */}
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate("/assinatura")}
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Ver Detalhes da Assinatura
+              </Button>
+
+              {/* Manage Subscription Button (Stripe Portal) */}
+              {!isSuperAdmin && !isPartner && status?.plan_status === "active" && (
                 <Button 
                   variant="outline" 
                   className="w-full"
@@ -316,7 +326,7 @@ export function AccountTab() {
                   ) : (
                     <ExternalLink className="h-4 w-4 mr-2" />
                   )}
-                  Gerenciar Assinatura
+                  Gerenciar no Stripe
                 </Button>
               )}
             </>
@@ -539,75 +549,90 @@ export function AccountTab() {
                   <p className="font-medium text-destructive">Excluir Conta Permanentemente</p>
                   <p className="text-sm text-muted-foreground">
                     Esta ação é irreversível. Todos os seus dados, clientes, agendamentos e configurações serão excluídos permanentemente.
-                    {status?.plan_status === "active" && " Sua assinatura será cancelada automaticamente."}
                   </p>
+                  {status?.plan_status === "active" && (
+                    <p className="text-sm text-destructive font-medium mt-2">
+                      ⚠️ Você precisa cancelar sua assinatura antes de excluir a conta.
+                    </p>
+                  )}
                 </div>
               </div>
               
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    variant="destructive" 
-                    className="w-full"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Excluir Minha Conta
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="text-destructive">
-                      Tem certeza absoluta?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="space-y-4">
-                      <p>
-                        Esta ação <strong>não pode ser desfeita</strong>. Isso irá excluir permanentemente:
-                      </p>
-                      <ul className="list-disc list-inside space-y-1 text-sm">
-                        <li>Sua conta e perfil</li>
-                        <li>Todas as unidades e profissionais</li>
-                        <li>Todos os clientes e histórico</li>
-                        <li>Todos os agendamentos e dados financeiros</li>
-                        <li>Todas as configurações e integrações</li>
-                      </ul>
-                      <div className="mt-4">
-                        <Label htmlFor="delete-confirm" className="text-sm font-medium">
-                          Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar:
-                        </Label>
-                        <Input
-                          id="delete-confirm"
-                          value={deleteConfirmText}
-                          onChange={(e) => setDeleteConfirmText(e.target.value)}
-                          placeholder="EXCLUIR"
-                          className="mt-2"
-                        />
-                      </div>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>
-                      Cancelar
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteAccount}
-                      disabled={deleteConfirmText !== "EXCLUIR" || isDeletingAccount}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              {status?.plan_status === "active" ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full border-destructive/50 text-destructive"
+                  onClick={() => navigate("/assinatura")}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Ir para Cancelar Assinatura
+                </Button>
+              ) : (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="destructive" 
+                      className="w-full"
                     >
-                      {isDeletingAccount ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Excluindo...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir Permanentemente
-                        </>
-                      )}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir Minha Conta
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-destructive">
+                        Tem certeza absoluta?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-4">
+                        <p>
+                          Esta ação <strong>não pode ser desfeita</strong>. Isso irá excluir permanentemente:
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                          <li>Sua conta e perfil</li>
+                          <li>Todas as unidades e profissionais</li>
+                          <li>Todos os clientes e histórico</li>
+                          <li>Todos os agendamentos e dados financeiros</li>
+                          <li>Todas as configurações e integrações</li>
+                        </ul>
+                        <div className="mt-4">
+                          <Label htmlFor="delete-confirm" className="text-sm font-medium">
+                            Digite <strong className="text-destructive">EXCLUIR</strong> para confirmar:
+                          </Label>
+                          <Input
+                            id="delete-confirm"
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            placeholder="EXCLUIR"
+                            className="mt-2"
+                          />
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>
+                        Cancelar
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteAccount}
+                        disabled={deleteConfirmText !== "EXCLUIR" || isDeletingAccount}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {isDeletingAccount ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Excluindo...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Excluir Permanentemente
+                          </>
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           </CardContent>
         </Card>
