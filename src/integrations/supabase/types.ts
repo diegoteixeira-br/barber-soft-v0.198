@@ -1310,7 +1310,7 @@ export type Database = {
       user_owns_unit: { Args: { unit_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "owner" | "barber"
+      app_role: "owner" | "barber" | "super_admin"
       appointment_status: "pending" | "confirmed" | "completed" | "cancelled"
     }
     CompositeTypes: {
@@ -1439,7 +1439,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "barber"],
+      app_role: ["owner", "barber", "super_admin"],
       appointment_status: ["pending", "confirmed", "completed", "cancelled"],
     },
   },
