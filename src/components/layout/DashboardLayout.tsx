@@ -2,7 +2,6 @@ import { ReactNode, useState } from "react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { SupportChatWidget } from "@/components/support/SupportChatWidget";
-import { FeedbackFormModal } from "@/components/feedback/FeedbackFormModal";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -10,7 +9,6 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   return (
     <SidebarProvider>
@@ -18,7 +16,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <AppSidebar 
           onOpenChat={() => setIsChatOpen(true)} 
           isChatOpen={isChatOpen}
-          onOpenFeedback={() => setIsFeedbackOpen(true)}
         />
         <SidebarInset className="flex flex-1 flex-col">
           <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
@@ -29,7 +26,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </SidebarInset>
       </div>
       <SupportChatWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-      <FeedbackFormModal open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen} />
     </SidebarProvider>
   );
 }

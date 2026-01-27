@@ -1,9 +1,9 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Link2, Shield, Ban, FileText, Bell, Percent, Clock, Gift } from "lucide-react";
+import { Building2, Link2, Ban, FileText, Bell, Percent, Clock, Gift, UserCircle } from "lucide-react";
 import { BusinessProfileTab } from "@/components/configuracoes/BusinessProfileTab";
 import { IntegrationTab } from "@/components/configuracoes/IntegrationTab";
-import { SecurityTab } from "@/components/configuracoes/SecurityTab";
+import { AccountTab } from "@/components/configuracoes/AccountTab";
 import { CancellationPolicyTab } from "@/components/configuracoes/CancellationPolicyTab";
 import { PartnershipTermsTab } from "@/components/configuracoes/PartnershipTermsTab";
 import { NotificationsTab } from "@/components/configuracoes/NotificationsTab";
@@ -54,9 +54,9 @@ export default function Configuracoes() {
               <Link2 className="h-4 w-4" />
               <span className="hidden sm:inline">Integração</span>
             </TabsTrigger>
-            <TabsTrigger value="security" className="gap-2">
-              <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Segurança</span>
+            <TabsTrigger value="account" className="gap-2">
+              <UserCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Conta</span>
             </TabsTrigger>
           </TabsList>
 
@@ -85,8 +85,8 @@ export default function Configuracoes() {
             <TabsContent value="integration">
               <IntegrationTab />
             </TabsContent>
-            <TabsContent value="security">
-              <SecurityTab />
+            <TabsContent value="account">
+              <AccountTab />
             </TabsContent>
           </div>
         </Tabs>

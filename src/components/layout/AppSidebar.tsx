@@ -17,9 +17,7 @@ import {
   Megaphone,
   BarChart3,
   Headphones,
-  MessageCircle,
   Shield,
-  CreditCard,
 } from "lucide-react";
 import {
   Sidebar,
@@ -57,17 +55,15 @@ const menuItems = [
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "Unidades", url: "/unidades", icon: Building2 },
-  { title: "Assinatura", url: "/assinatura", icon: CreditCard },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
 interface AppSidebarProps {
   onOpenChat: () => void;
   isChatOpen: boolean;
-  onOpenFeedback: () => void;
 }
 
-export function AppSidebar({ onOpenChat, isChatOpen, onOpenFeedback }: AppSidebarProps) {
+export function AppSidebar({ onOpenChat, isChatOpen }: AppSidebarProps) {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -200,17 +196,6 @@ export function AppSidebar({ onOpenChat, isChatOpen, onOpenFeedback }: AppSideba
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              {/* Feedback Item */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={onOpenFeedback}
-                  tooltip={collapsed ? "Feedback" : undefined}
-                  className="transition-all duration-200 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  <span>Feedback</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               {/* Support Chat Item */}
               <SidebarMenuItem>
                 <SidebarMenuButton
