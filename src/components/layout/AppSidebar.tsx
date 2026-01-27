@@ -16,6 +16,7 @@ import {
   Megaphone,
   BarChart3,
   Headphones,
+  MessageCircle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -59,9 +60,10 @@ const menuItems = [
 interface AppSidebarProps {
   onOpenChat: () => void;
   isChatOpen: boolean;
+  onOpenFeedback: () => void;
 }
 
-export function AppSidebar({ onOpenChat, isChatOpen }: AppSidebarProps) {
+export function AppSidebar({ onOpenChat, isChatOpen, onOpenFeedback }: AppSidebarProps) {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -193,6 +195,17 @@ export function AppSidebar({ onOpenChat, isChatOpen }: AppSidebarProps) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {/* Feedback Item */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={onOpenFeedback}
+                  tooltip={collapsed ? "Feedback" : undefined}
+                  className="transition-all duration-200 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  <span>Feedback</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               {/* Support Chat Item */}
               <SidebarMenuItem>
                 <SidebarMenuButton
