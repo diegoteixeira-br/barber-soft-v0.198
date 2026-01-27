@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Trash2, Loader2 } from "lucide-react";
+import { useRef, useEffect } from "react";
+import { X, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useSupportChat } from "@/hooks/useSupportChat";
 import { ChatMessage } from "./ChatMessage";
@@ -21,8 +20,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-export function SupportChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+interface SupportChatWidgetProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function SupportChatWidget({ isOpen, onClose }: SupportChatWidgetProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, isLoading, sendMessage, clearHistory, cancelRequest } = useSupportChat();
 
@@ -47,41 +50,6 @@ export function SupportChatWidget() {
 
   return (
     <>
-      {/* Floating Comic Speech Bubble Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className={cn(
-          "fixed bottom-3 right-3 z-50 group",
-          "transition-all duration-300 ease-out",
-          "hover:scale-110",
-          isOpen && "hidden"
-        )}
-      >
-        <div className="relative flex flex-col items-center justify-center w-12 h-12 bg-background border border-primary/80 rounded-full shadow-md">
-          {/* Discrete label */}
-          <span className="text-[6px] font-medium text-primary/70 uppercase tracking-tight leading-none">
-            24h
-          </span>
-          
-          {/* J Avatar */}
-          <span className="text-lg font-bold text-primary leading-none">
-            J
-          </span>
-          
-          {/* Comic speech bubble tail */}
-          <div className="absolute -bottom-1 right-1">
-            <div 
-              className="w-0 h-0"
-              style={{
-                borderLeft: '4px solid transparent',
-                borderRight: '4px solid transparent',
-                borderTop: '6px solid hsl(var(--primary) / 0.8)',
-              }}
-            />
-          </div>
-        </div>
-      </button>
-
       {/* Chat Window */}
       <div
         className={cn(
@@ -142,7 +110,7 @@ export function SupportChatWidget() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsOpen(false)}
+                onClick={onClose}
                 className="h-8 w-8 text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10"
               >
                 <X className="h-5 w-5" />
@@ -180,7 +148,7 @@ export function SupportChatWidget() {
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/20 md:hidden"
-          onClick={() => setIsOpen(false)}
+          onClick={onClose}
         />
       )}
     </>

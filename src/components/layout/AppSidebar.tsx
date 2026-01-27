@@ -15,6 +15,7 @@ import {
   LogOut,
   Megaphone,
   BarChart3,
+  Headphones,
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,7 +56,12 @@ const menuItems = [
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  onOpenChat: () => void;
+  isChatOpen: boolean;
+}
+
+export function AppSidebar({ onOpenChat, isChatOpen }: AppSidebarProps) {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -187,6 +193,22 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {/* Support Chat Item */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={onOpenChat}
+                  isActive={isChatOpen}
+                  tooltip={collapsed ? "Suporte 24h" : undefined}
+                  className={`transition-all duration-200 ${
+                    isChatOpen
+                      ? "bg-primary/10 text-primary hover:bg-primary/20"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+                >
+                  <Headphones className={`h-5 w-5 ${isChatOpen ? "text-primary" : ""}`} />
+                  <span>Suporte 24h</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
