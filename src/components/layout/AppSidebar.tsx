@@ -19,6 +19,7 @@ import {
   Headphones,
   MessageCircle,
   Shield,
+  CreditCard,
 } from "lucide-react";
 import {
   Sidebar,
@@ -56,6 +57,7 @@ const menuItems = [
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "Unidades", url: "/unidades", icon: Building2 },
+  { title: "Assinatura", url: "/assinatura", icon: CreditCard },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
