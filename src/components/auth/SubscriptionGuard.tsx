@@ -17,8 +17,6 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [showBanner, setShowBanner] = useState(false);
-
   // Pages that don't require subscription check
   const exemptPaths = ["/escolher-plano", "/assinatura", "/admin"];
 
@@ -65,7 +63,9 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
           return;
         }
 
-        // Check trial status
+        // Check trial status - trial expired means user should be blocked
+        // Note: Credit card is captured at signup, so Stripe will auto-charge after trial
+        // If payment fails, webhook updates status to "overdue"
         if (company.plan_status === "trial" && company.trial_ends_at) {
           const trialEnd = new Date(company.trial_ends_at);
           const now = new Date();
@@ -75,19 +75,18 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
           
           if (days <= 0) {
             setIsTrialExpired(true);
-          } else if (days <= 3) {
-            setShowBanner(true);
           }
+          // No banner needed - Stripe auto-charges when trial ends
         } else if (company.plan_status === "partner" && company.partner_ends_at) {
           const partnerEnd = new Date(company.partner_ends_at);
           const now = new Date();
           const days = Math.ceil((partnerEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
           setDaysRemaining(days);
-          if (days <= 7) {
-            setShowBanner(true);
-          }
+          // Partners don't have auto-billing, so no banner needed either
         } else if (company.plan_status === "cancelled" || company.plan_status === "overdue") {
+          // Cancelled = user cancelled subscription
+          // Overdue = payment failed after trial ended
           setIsTrialExpired(true);
         }
         // Active status = full access
@@ -156,30 +155,5 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     );
   }
 
-  return (
-    <>
-      {/* Warning banner for trials about to expire */}
-      {showBanner && daysRemaining !== null && daysRemaining > 0 && !isSuperAdmin && (
-        <Alert className="rounded-none border-x-0 border-t-0 bg-amber-500/10 border-amber-500/50">
-          <Clock className="h-4 w-4 text-amber-500" />
-          <AlertDescription className="flex items-center justify-between w-full">
-            <span className="text-amber-700 dark:text-amber-400">
-              {daysRemaining === 1 
-                ? "Seu período de teste expira amanhã!" 
-                : `Seu período de teste expira em ${daysRemaining} dias.`}
-            </span>
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="ml-4 border-amber-500 text-amber-600 hover:bg-amber-500/10"
-              onClick={() => navigate("/escolher-plano")}
-            >
-              Escolher Plano
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }
