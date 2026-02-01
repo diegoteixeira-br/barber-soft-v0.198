@@ -1,4 +1,4 @@
-import { Building2, MapPin, Phone, User, Pencil, Trash2, MessageCircle, Crown, Settings, Gift } from "lucide-react";
+import { Building2, MapPin, Phone, User, Pencil, Trash2, MessageCircle, Crown, Settings, Gift, Unplug, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Unit } from "@/hooks/useUnits";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface UnitCardProps {
   unit: Unit;
@@ -24,36 +30,39 @@ interface UnitCardProps {
 
 type WhatsAppStatus = 'disconnected' | 'connected' | 'checking';
 
+interface WhatsAppProfile {
+  name: string | null;
+  phone: string | null;
+  pictureUrl: string | null;
+}
+
 const formatBrazilianPhone = (phone: string): string => {
-  // Remove all non-numeric characters
   const digits = phone.replace(/\D/g, '');
   
-  // Handle different formats
   if (digits.length === 13 && digits.startsWith('55')) {
-    // +55 XX XXXXX-XXXX
     return `(${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
   } else if (digits.length === 12 && digits.startsWith('55')) {
-    // +55 XX XXXX-XXXX
     return `(${digits.slice(2, 4)}) ${digits.slice(4, 8)}-${digits.slice(8)}`;
   } else if (digits.length === 11) {
-    // XX XXXXX-XXXX
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   } else if (digits.length === 10) {
-    // XX XXXX-XXXX
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   }
   
-  return phone; // Return original if format not recognized
+  return phone;
 };
 
 export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHeadquarters, onSettings }: UnitCardProps) {
   const [whatsappStatus, setWhatsappStatus] = useState<WhatsAppStatus>('checking');
+  const [profile, setProfile] = useState<WhatsAppProfile | null>(null);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   useEffect(() => {
     const checkWhatsAppStatus = async () => {
-      // Se não tem instance_name configurado, está desconectado
       if (!unit.evolution_instance_name) {
         setWhatsappStatus('disconnected');
+        setProfile(null);
         return;
       }
 
@@ -70,19 +79,51 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
 
         if (error || !data?.success) {
           setWhatsappStatus('disconnected');
+          setProfile(null);
           return;
         }
 
-        // Só mostra conectado se o state for "open"
-        setWhatsappStatus(data.state === 'open' ? 'connected' : 'disconnected');
+        if (data.state === 'open') {
+          setWhatsappStatus('connected');
+          setProfile({
+            name: unit.whatsapp_name || data.profile?.name || null,
+            phone: unit.whatsapp_phone || data.profile?.phone || null,
+            pictureUrl: unit.whatsapp_picture_url || data.profile?.pictureUrl || null,
+          });
+        } else {
+          setWhatsappStatus('disconnected');
+          setProfile(null);
+        }
       } catch (err) {
         console.error('Error checking WhatsApp status:', err);
         setWhatsappStatus('disconnected');
+        setProfile(null);
       }
     };
 
     checkWhatsAppStatus();
-  }, [unit.id, unit.evolution_instance_name]);
+  }, [unit.id, unit.evolution_instance_name, unit.whatsapp_name, unit.whatsapp_phone, unit.whatsapp_picture_url]);
+
+  const handleDisconnect = async () => {
+    setIsDisconnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('evolution-whatsapp', {
+        body: { action: 'disconnect', unit_id: unit.id }
+      });
+
+      if (error) throw error;
+
+      toast.success('WhatsApp desconectado com sucesso');
+      setWhatsappStatus('disconnected');
+      setProfile(null);
+      setPopoverOpen(false);
+    } catch (err) {
+      console.error('Error disconnecting WhatsApp:', err);
+      toast.error('Erro ao desconectar WhatsApp');
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
 
   return (
     <Card className="group relative overflow-hidden border-border bg-card transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
@@ -90,7 +131,6 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
           <div className="flex items-center gap-3">
           <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
             <Building2 className="h-5 w-5 text-primary" />
-            {/* Real-time WhatsApp status indicator */}
             <span 
               className={`absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-card ${
                 whatsappStatus === 'checking' 
@@ -172,7 +212,6 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
       </CardHeader>
       
       <CardContent className="space-y-3">
-        {/* Fidelity Status Badge */}
         {unit.fidelity_program_enabled && (
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
@@ -216,15 +255,76 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
               Verificando...
             </Button>
           ) : whatsappStatus === 'connected' ? (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20 hover:text-green-300"
-              onClick={() => onConfigureWhatsApp(unit)}
-            >
-              <MessageCircle className="mr-2 h-4 w-4" />
-              {unit.whatsapp_phone ? `Conectado: ${formatBrazilianPhone(unit.whatsapp_phone)}` : 'WhatsApp Conectado'}
-            </Button>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20 hover:text-green-300 justify-start gap-2"
+                >
+                  {profile?.pictureUrl ? (
+                    <img 
+                      src={profile.pictureUrl} 
+                      alt="WhatsApp" 
+                      className="h-5 w-5 rounded-full object-cover"
+                    />
+                  ) : (
+                    <MessageCircle className="h-4 w-4" />
+                  )}
+                  <span className="truncate flex-1 text-left">
+                    {profile?.phone ? formatBrazilianPhone(profile.phone) : 'WhatsApp Conectado'}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-0" align="start">
+                <div className="p-4 space-y-4">
+                  {/* Profile Info */}
+                  <div className="flex items-center gap-3">
+                    {profile?.pictureUrl ? (
+                      <img 
+                        src={profile.pictureUrl} 
+                        alt="WhatsApp" 
+                        className="h-12 w-12 rounded-full object-cover border-2 border-green-500/50"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-full bg-green-500/20 flex items-center justify-center border-2 border-green-500/50">
+                        <MessageCircle className="h-6 w-6 text-green-500" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {profile?.name || 'WhatsApp'}
+                      </p>
+                      {profile?.phone && (
+                        <p className="text-sm text-muted-foreground">
+                          {formatBrazilianPhone(profile.phone)}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-xs text-green-500 font-medium">Online</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Disconnect Button */}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDisconnect}
+                    disabled={isDisconnecting}
+                    className="w-full gap-2"
+                  >
+                    {isDisconnecting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Unplug className="h-4 w-4" />
+                    )}
+                    Desconectar WhatsApp
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           ) : (
             <Button 
               size="sm" 
