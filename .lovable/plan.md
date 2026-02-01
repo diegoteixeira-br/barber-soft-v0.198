@@ -1,155 +1,194 @@
 
 
-# Plano: Mensagens Padrao Editaveis nas Automacoes de Marketing
+# Plano: Trigger de Fidelidade com Busca Flexível + Auto-Cadastro
 
-## Resumo do Pedido
+## Objetivo
 
-O usuario quer que:
-1. As mensagens de template (Aniversario, Resgate, Lembrete) fiquem **sempre editaveis**, mesmo quando a automacao estiver desativada
-2. As mensagens tenham os **valores padrao** que ele especificou
-3. Na mensagem de Lembrete, as palavras **CONFIRMADO** e **CANCELAR** sejam fixas e nao editaveis
+Modificar o trigger `sync_client_on_appointment_complete` para:
+1. Buscar cliente por **telefone** (prioridade)
+2. Se não encontrar, buscar por **nome** na mesma unidade
+3. Se ainda não encontrar, **criar o cliente** automaticamente
 
----
-
-## Solucao Proposta
-
-### 1. Remover Restricao de Edicao
-
-Atualmente, os textareas ficam desabilitados (`disabled={!birthdayEnabled}`) quando o switch esta desligado. 
-
-**Mudanca:** Remover o atributo `disabled` de TODOS os textareas de mensagem.
-
-### 2. Definir Valores Padrao das Mensagens
-
-Quando as configuracoes carregarem vazias, usar os textos fornecidos pelo usuario:
-
-| Campo | Mensagem Padrao |
-|-------|-----------------|
-| Aniversario | "Salve {{nome}}! Hoje o dia e todo seu! ..." |
-| Resgate | "E ai {{nome}}, sumido hein! ..." |
-| Lembrete (editavel) | "Ola {{nome}}! ... Tmj" |
-| Lembrete (fixo) | "CONFIRMADO / CANCELAR" - nao editavel |
-
-### 3. Estrutura Especial para Lembrete
-
-Para proteger as palavras CONFIRMADO e CANCELAR, vou dividir a mensagem de lembrete em duas partes:
+## Fluxo da Nova Lógica
 
 ```text
 ┌─────────────────────────────────────────────────────┐
-│  PARTE EDITAVEL (textarea)                          │
-│  "Ola {{nome}}! Lembrando do seu agendamento..."    │
+│  AGENDAMENTO FINALIZADO (status = 'completed')      │
 └─────────────────────────────────────────────────────┘
+                    │
+                    ▼
 ┌─────────────────────────────────────────────────────┐
-│  PARTE FIXA (texto readonly cinza)                  │
-│  "Para o sistema reconhecer, responda apenas:       │
-│   CONFIRMADO / CANCELAR"                            │
+│  1. Tem telefone? Busca por telefone + unit_id      │
+└─────────────────────────────────────────────────────┘
+                    │
+          Não encontrou?
+                    ▼
+┌─────────────────────────────────────────────────────┐
+│  2. Tem nome? Busca por NOME + unit_id              │
+└─────────────────────────────────────────────────────┘
+                    │
+          Não encontrou?
+                    ▼
+┌─────────────────────────────────────────────────────┐
+│  3. NOVO: Criar cliente automaticamente             │
+│     (nome obrigatório, telefone opcional)           │
+└─────────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────┐
+│  4. Atualiza visitas e processa fidelidade          │
 └─────────────────────────────────────────────────────┘
 ```
 
-A mensagem final enviada sera: `PARTE_EDITAVEL + "\n\n" + PARTE_FIXA`
+## Migração SQL
 
----
+```sql
+CREATE OR REPLACE FUNCTION public.sync_client_on_appointment_complete()
+RETURNS TRIGGER AS $$
+DECLARE
+  client_record RECORD;
+  fidelity_enabled boolean;
+  cuts_threshold integer;
+  min_value numeric;
+  owner_id uuid;
+  should_count_loyalty boolean;
+  is_new_status_completed boolean;
+  current_loyalty_cuts integer;
+  current_available_courtesies integer;
+BEGIN
+  -- Determina se é uma nova conclusão
+  IF TG_OP = 'INSERT' THEN
+    is_new_status_completed := (NEW.status = 'completed');
+  ELSE
+    is_new_status_completed := (NEW.status = 'completed' AND OLD.status IS DISTINCT FROM 'completed');
+  END IF;
 
-## Mensagens Padrao Completas
-
-### Aniversario
-```text
-Salve {{nome}}! Hoje o dia é todo seu! 🥳
-
-👏 Passando aqui pra te desejar um feliz aniversário e tudo de melhor. 
-
-Que você continue com essa vibe gente boa de sempre! Sucesso, meu parceiro! 
-
-Quando quiser comemorar com aquele visual na régua, tamos aqui. 🍾✂️ 
-
-Que tal aproveitar e já marcar seu horário? Manda um alô aqui que eu vejo a agenda pra você! 📅
-
-(Se preferir não receber nossos avisos, digite SAIR. Tmj)
+  -- MUDANÇA: Processar mesmo sem telefone (precisa ter pelo menos nome)
+  IF is_new_status_completed AND NEW.client_name IS NOT NULL AND TRIM(NEW.client_name) != '' THEN
+    
+    -- ETAPA 1: Busca por telefone (se disponível)
+    IF NEW.client_phone IS NOT NULL AND NEW.client_phone != '' THEN
+      SELECT * INTO client_record 
+      FROM public.clients 
+      WHERE unit_id = NEW.unit_id AND phone = NEW.client_phone;
+    END IF;
+    
+    -- ETAPA 2: Fallback - busca por nome (se não encontrou por telefone)
+    IF client_record IS NULL THEN
+      SELECT * INTO client_record 
+      FROM public.clients 
+      WHERE unit_id = NEW.unit_id 
+        AND LOWER(TRIM(name)) = LOWER(TRIM(NEW.client_name))
+      LIMIT 1;
+    END IF;
+    
+    -- ETAPA 3: Auto-cadastro (se não encontrou e não é dependente)
+    IF client_record IS NULL AND NEW.is_dependent IS NOT TRUE THEN
+      INSERT INTO public.clients (
+        company_id, unit_id, name, phone, birth_date, 
+        last_visit_at, total_visits, loyalty_cuts
+      )
+      VALUES (
+        NEW.company_id, NEW.unit_id, NEW.client_name, 
+        NULLIF(TRIM(NEW.client_phone), ''),  -- telefone pode ser NULL
+        NEW.client_birth_date, NOW(), 1, 0
+      )
+      RETURNING * INTO client_record;
+    ELSE
+      -- Cliente existe: atualiza visitas
+      IF client_record IS NOT NULL THEN
+        UPDATE public.clients
+        SET last_visit_at = NOW(), 
+            total_visits = COALESCE(total_visits, 0) + 1, 
+            updated_at = NOW()
+        WHERE id = client_record.id;
+      END IF;
+    END IF;
+    
+    -- Processa fidelidade (para clientes novos e existentes)
+    IF client_record IS NOT NULL THEN
+      -- Busca owner e configurações
+      SELECT owner_user_id INTO owner_id 
+      FROM public.companies WHERE id = NEW.company_id;
+      
+      SELECT COALESCE(bs.fidelity_program_enabled, false), 
+             COALESCE(bs.fidelity_cuts_threshold, 10),
+             COALESCE(bs.fidelity_min_value, 30.00)
+      INTO fidelity_enabled, cuts_threshold, min_value
+      FROM public.business_settings bs WHERE bs.user_id = owner_id;
+      
+      -- Busca valores ATUAIS do cliente (fresh read)
+      SELECT loyalty_cuts, available_courtesies 
+      INTO current_loyalty_cuts, current_available_courtesies 
+      FROM public.clients WHERE id = client_record.id;
+      
+      current_loyalty_cuts := COALESCE(current_loyalty_cuts, 0);
+      current_available_courtesies := COALESCE(current_available_courtesies, 0);
+      
+      -- Cortesia de fidelidade: zera contador
+      IF NEW.payment_method = 'fidelity_courtesy' THEN
+        UPDATE public.clients
+        SET loyalty_cuts = 0, updated_at = NOW()
+        WHERE id = client_record.id;
+        RETURN NEW;
+      END IF;
+      
+      -- Verifica se deve contar para fidelidade
+      should_count_loyalty := (
+        fidelity_enabled = true 
+        AND cuts_threshold > 0
+        AND NEW.total_price >= min_value
+        AND (NEW.payment_method IS NULL OR NEW.payment_method NOT IN ('courtesy', 'fidelity_courtesy'))
+        AND current_available_courtesies = 0
+      );
+      
+      IF should_count_loyalty THEN
+        IF (current_loyalty_cuts + 1) >= cuts_threshold THEN
+          -- Completou ciclo: ganha cortesia
+          UPDATE public.clients
+          SET loyalty_cuts = 0, 
+              available_courtesies = 1,
+              total_courtesies_earned = COALESCE(total_courtesies_earned, 0) + 1,
+              updated_at = NOW()
+          WHERE id = client_record.id;
+        ELSE
+          -- Incrementa contador
+          UPDATE public.clients
+          SET loyalty_cuts = current_loyalty_cuts + 1, 
+              updated_at = NOW()
+          WHERE id = client_record.id;
+        END IF;
+      END IF;
+    END IF;
+      
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public';
 ```
 
-### Resgate
-```text
-E aí {{nome}}, sumido hein! 
+## Mudanças Principais
 
-👀 Rapaz, a gente tava aqui comentando... faz tempo que você não aparece! 
+| Aspecto | Antes | Depois |
+|---------|-------|--------|
+| Condição inicial | `client_phone IS NOT NULL` | `client_name IS NOT NULL` |
+| Busca por telefone | Única opção | Prioridade 1 |
+| Busca por nome | Não existia | Prioridade 2 (fallback) |
+| Auto-cadastro | Só com telefone | Com ou sem telefone |
 
-A cadeira tá sentindo sua falta e a resenha também. 😂 Bora renovar esse visual e colocar o papo em dia? 
+## Cenários de Teste
 
-O café tá quente e a tesoura tá afiada te esperando. ☕✂️ 
+| Cenário | Resultado |
+|---------|-----------|
+| Serviço Rápido com nome de cliente cadastrado | Encontra por nome, conta fidelidade |
+| Serviço Rápido com nome novo | Cria cliente, inicia fidelidade |
+| Agendamento normal com telefone | Comportamento igual ao atual |
+| Dependente sem cadastro | Não cria cliente (correto) |
 
-Que tal aproveitar e já marcar seu horário? Manda um alô aqui que eu vejo a agenda pra você! 📅
+## Arquivo Modificado
 
-(Se não quiser receber esses toques, digite SAIR. Sem stress, a amizade continua! até mais👊)
-```
-
-### Lembrete (Parte Editavel)
-```text
-Olá {{nome}}! 👋
-
-Lembrando do seu agendamento para HOJE às {{horario}} com {{profissional}}.
-
-📍 {{servico}}
-
-Aguardamos você! Se precisar remarcar, entre em contato. Tmj 💈
-```
-
-### Lembrete (Parte Fixa - NAO EDITAVEL)
-```text
-👇 Para o sistema reconhecer, responda apenas:
-
-📌 *CONFIRMADO* para confirmar presença
-
-📌 *CANCELAR* se não puder comparecer
-```
-
----
-
-## Mudancas Tecnicas
-
-### Arquivo: src/components/marketing/AutomationsTab.tsx
-
-1. **Definir constantes com valores padrao**
-```typescript
-const DEFAULT_BIRTHDAY_MESSAGE = `Salve {{nome}}! Hoje o dia é todo seu! 🥳...`;
-const DEFAULT_RESCUE_MESSAGE = `E aí {{nome}}, sumido hein!...`;
-const DEFAULT_REMINDER_MESSAGE = `Olá {{nome}}! 👋...`;
-const FIXED_REMINDER_SUFFIX = `👇 Para o sistema reconhecer...`;
-```
-
-2. **Usar valores padrao no useEffect**
-```typescript
-setBirthdayMessage(settings.birthday_message_template || DEFAULT_BIRTHDAY_MESSAGE);
-setRescueMessage(settings.rescue_message_template || DEFAULT_RESCUE_MESSAGE);
-setReminderMessage(settings.appointment_reminder_template || DEFAULT_REMINDER_MESSAGE);
-```
-
-3. **Remover `disabled` dos textareas**
-```diff
-- disabled={!birthdayEnabled}
-+ // sempre editavel
-```
-
-4. **Adicionar bloco fixo no Lembrete**
-Mostrar a parte fixa abaixo do textarea como um card cinza readonly.
-
-5. **Concatenar no save**
-```typescript
-appointment_reminder_template: reminderMessage + "\n\n" + FIXED_REMINDER_SUFFIX,
-```
-
----
-
-## Arquivos Modificados
-
-| Arquivo | Mudanca |
-|---------|---------|
-| src/components/marketing/AutomationsTab.tsx | Valores padrao, remover disabled, parte fixa do lembrete |
-
----
-
-## Resultado Visual Esperado
-
-- Todos os textareas sempre editaveis
-- Mensagens com texto padrao ao carregar pela primeira vez
-- Bloco cinza abaixo do textarea de Lembrete mostrando a parte fixa (CONFIRMADO/CANCELAR) que sera adicionada automaticamente
+| Tipo | Local |
+|------|-------|
+| SQL Migration | Função `sync_client_on_appointment_complete` |
 
