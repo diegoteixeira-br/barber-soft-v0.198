@@ -1,6 +1,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Ban, FileText, Bell, Percent, Clock, Gift, UserCircle } from "lucide-react";
+import { Building2, Ban, FileText, Bell, Percent, Clock, UserCircle } from "lucide-react";
 import { BusinessProfileTab } from "@/components/configuracoes/BusinessProfileTab";
 import { AccountTab } from "@/components/configuracoes/AccountTab";
 import { CancellationPolicyTab } from "@/components/configuracoes/CancellationPolicyTab";
@@ -8,7 +8,6 @@ import { PartnershipTermsTab } from "@/components/configuracoes/PartnershipTerms
 import { NotificationsTab } from "@/components/configuracoes/NotificationsTab";
 import { FinancialFeesTab } from "@/components/configuracoes/FinancialFeesTab";
 import { BusinessHoursTab } from "@/components/configuracoes/BusinessHoursTab";
-import { FidelityTab } from "@/components/configuracoes/FidelityTab";
 
 export default function Configuracoes() {
   return (
@@ -20,7 +19,7 @@ export default function Configuracoes() {
         </div>
         
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
             <TabsTrigger value="profile" className="gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Perfil</span>
@@ -28,10 +27,6 @@ export default function Configuracoes() {
             <TabsTrigger value="hours" className="gap-2">
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Horários</span>
-            </TabsTrigger>
-            <TabsTrigger value="fidelity" className="gap-2">
-              <Gift className="h-4 w-4" />
-              <span className="hidden sm:inline">Fidelidade</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" />
@@ -61,9 +56,6 @@ export default function Configuracoes() {
             </TabsContent>
             <TabsContent value="hours">
               <BusinessHoursTab />
-            </TabsContent>
-            <TabsContent value="fidelity">
-              <FidelityTab />
             </TabsContent>
             <TabsContent value="notifications">
               <NotificationsTab />

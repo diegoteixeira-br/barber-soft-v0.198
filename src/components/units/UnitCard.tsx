@@ -1,4 +1,4 @@
-import { Building2, MapPin, Phone, User, MoreVertical, Pencil, Trash2, MessageCircle, Crown } from "lucide-react";
+import { Building2, MapPin, Phone, User, MoreVertical, Pencil, Trash2, MessageCircle, Crown, Settings, Gift } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ interface UnitCardProps {
   onDelete: (unit: Unit) => void;
   onConfigureWhatsApp: (unit: Unit) => void;
   onSetHeadquarters?: (unit: Unit) => void;
+  onSettings?: (unit: Unit) => void;
 }
 
 type WhatsAppStatus = 'disconnected' | 'connected' | 'checking';
@@ -45,7 +46,7 @@ const formatBrazilianPhone = (phone: string): string => {
   return phone; // Return original if format not recognized
 };
 
-export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHeadquarters }: UnitCardProps) {
+export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHeadquarters, onSettings }: UnitCardProps) {
   const [whatsappStatus, setWhatsappStatus] = useState<WhatsAppStatus>('checking');
 
   useEffect(() => {
@@ -127,47 +128,70 @@ export function UnitCard({ unit, onEdit, onDelete, onConfigureWhatsApp, onSetHea
           </div>
         </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-            >
-              <MoreVertical className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-popover">
-            {!unit.is_headquarters && onSetHeadquarters && (
-              <>
-                <DropdownMenuItem onClick={() => onSetHeadquarters(unit)} className="cursor-pointer">
-                  <Crown className="mr-2 h-4 w-4" />
-                  Definir como Matriz
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
-            )}
-            <DropdownMenuItem onClick={() => onConfigureWhatsApp(unit)} className="cursor-pointer">
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Configurar WhatsApp
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onEdit(unit)} className="cursor-pointer">
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDelete(unit)}
-              className="cursor-pointer text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          {/* Gear icon - always visible */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onSettings?.(unit)}
+            title="Configurações da unidade"
+          >
+            <Settings className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+              >
+                <MoreVertical className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-popover">
+              {!unit.is_headquarters && onSetHeadquarters && (
+                <>
+                  <DropdownMenuItem onClick={() => onSetHeadquarters(unit)} className="cursor-pointer">
+                    <Crown className="mr-2 h-4 w-4" />
+                    Definir como Matriz
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem onClick={() => onConfigureWhatsApp(unit)} className="cursor-pointer">
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Configurar WhatsApp
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onEdit(unit)} className="cursor-pointer">
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onDelete(unit)}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </CardHeader>
       
       <CardContent className="space-y-3">
+        {/* Fidelity Status Badge */}
+        {unit.fidelity_program_enabled && (
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+              <Gift className="mr-1 h-3 w-3" />
+              Fidelidade: {unit.fidelity_cuts_threshold} cortes
+            </Badge>
+          </div>
+        )}
+        
         {unit.address && (
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary/70" />

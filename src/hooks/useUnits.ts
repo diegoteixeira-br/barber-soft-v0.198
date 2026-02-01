@@ -18,6 +18,9 @@ export interface Unit {
   whatsapp_phone: string | null;
   whatsapp_picture_url: string | null;
   timezone: string | null;
+  fidelity_program_enabled: boolean | null;
+  fidelity_cuts_threshold: number | null;
+  fidelity_min_value: number | null;
 }
 
 interface UnitFormData {

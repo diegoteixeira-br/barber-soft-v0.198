@@ -86,29 +86,20 @@ export function useFidelityCourtesy() {
       clientName: null,
     };
 
-    if (!clientPhone || !companyId) return defaultResult;
+    if (!clientPhone) return defaultResult;
 
     try {
-      // Get company owner to fetch settings
-      const { data: company } = await supabase
-        .from("companies")
-        .select("owner_user_id")
-        .eq("id", companyId)
-        .maybeSingle();
-
-      if (!company) return defaultResult;
-
-      // Get fidelity settings
-      const { data: settings } = await supabase
-        .from("business_settings")
+      // Get fidelity settings from unit (not business_settings anymore)
+      const { data: unitSettings } = await supabase
+        .from("units")
         .select("fidelity_program_enabled, fidelity_cuts_threshold, fidelity_min_value")
-        .eq("user_id", company.owner_user_id)
+        .eq("id", unitId)
         .maybeSingle();
 
-      if (!settings?.fidelity_program_enabled) return defaultResult;
+      if (!unitSettings?.fidelity_program_enabled) return defaultResult;
 
-      const threshold = settings.fidelity_cuts_threshold || 10;
-      const minValue = settings.fidelity_min_value || 30;
+      const threshold = unitSettings.fidelity_cuts_threshold || 10;
+      const minValue = unitSettings.fidelity_min_value || 30;
 
       // Get client data
       const { data: client } = await supabase

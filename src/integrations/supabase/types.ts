@@ -1440,6 +1440,9 @@ export type Database = {
           created_at: string
           evolution_api_key: string | null
           evolution_instance_name: string | null
+          fidelity_cuts_threshold: number | null
+          fidelity_min_value: number | null
+          fidelity_program_enabled: boolean | null
           id: string
           is_headquarters: boolean | null
           manager_name: string | null
@@ -1458,6 +1461,9 @@ export type Database = {
           created_at?: string
           evolution_api_key?: string | null
           evolution_instance_name?: string | null
+          fidelity_cuts_threshold?: number | null
+          fidelity_min_value?: number | null
+          fidelity_program_enabled?: boolean | null
           id?: string
           is_headquarters?: boolean | null
           manager_name?: string | null
@@ -1476,6 +1482,9 @@ export type Database = {
           created_at?: string
           evolution_api_key?: string | null
           evolution_instance_name?: string | null
+          fidelity_cuts_threshold?: number | null
+          fidelity_min_value?: number | null
+          fidelity_program_enabled?: boolean | null
           id?: string
           is_headquarters?: boolean | null
           manager_name?: string | null

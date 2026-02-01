@@ -3,6 +3,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { UnitCard } from "@/components/units/UnitCard";
 import { UnitFormModal } from "@/components/units/UnitFormModal";
 import { UnitWhatsAppModal } from "@/components/units/UnitWhatsAppModal";
+import { UnitSettingsModal } from "@/components/units/UnitSettingsModal";
 import { useUnits, Unit } from "@/hooks/useUnits";
 import { useCurrentUnit } from "@/contexts/UnitContext";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export default function Unidades() {
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null);
   const [whatsAppUnit, setWhatsAppUnit] = useState<Unit | null>(null);
+  const [settingsUnit, setSettingsUnit] = useState<Unit | null>(null);
 
   const handleOpenModal = (unit?: Unit) => {
     setEditingUnit(unit || null);
@@ -67,6 +69,15 @@ export default function Unidades() {
 
   const handleSetHeadquarters = (unit: Unit) => {
     setAsHeadquarters.mutate(unit.id);
+  };
+
+  const handleOpenSettings = (unit: Unit) => {
+    setSettingsUnit(unit);
+  };
+
+  const handleCloseSettings = () => {
+    setSettingsUnit(null);
+    refetch();
   };
 
   return (
@@ -113,6 +124,7 @@ export default function Unidades() {
                 onDelete={setDeletingUnit}
                 onConfigureWhatsApp={handleConfigureWhatsApp}
                 onSetHeadquarters={handleSetHeadquarters}
+                onSettings={handleOpenSettings}
               />
             ))}
           </div>
@@ -132,6 +144,12 @@ export default function Unidades() {
         onClose={() => setWhatsAppUnit(null)}
         unit={whatsAppUnit}
         onConnectionChange={handleWhatsAppConnectionChange}
+      />
+
+      <UnitSettingsModal
+        open={!!settingsUnit}
+        onClose={handleCloseSettings}
+        unit={settingsUnit}
       />
 
       <AlertDialog open={!!deletingUnit} onOpenChange={() => setDeletingUnit(null)}>
