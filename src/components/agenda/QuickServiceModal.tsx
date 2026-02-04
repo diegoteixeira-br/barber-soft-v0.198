@@ -9,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Form,
   FormControl,
@@ -153,7 +152,7 @@ export function QuickServiceModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
@@ -161,11 +160,10 @@ export function QuickServiceModal({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[calc(90vh-120px)] pr-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
               name="client_name"
               render={({ field }) => (
                 <FormItem>
@@ -385,21 +383,20 @@ export function QuickServiceModal({
               )}
             />
 
-              <div className="flex justify-end gap-2 pt-4 pb-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Salvando..." : scheduleLater ? "Agendar Serviço" : "Lançar Atendimento"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Salvando..." : scheduleLater ? "Agendar Serviço" : "Lançar Atendimento"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
