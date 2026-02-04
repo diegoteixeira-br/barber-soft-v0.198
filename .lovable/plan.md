@@ -1,87 +1,156 @@
 
 
-# Plano: Atualizar Configuracao da Evolution API
+# Plano: Sistema de Opt-Out (SAIR) do Marketing
 
-## Visao Geral
+## Como o Sistema Funciona Atualmente
 
-Ajustar a edge function `evolution-whatsapp` para que as instancias criadas sigam exatamente a configuracao mostrada nos prints da Evolution API, incluindo adicionar suporte para a nova URL de webhook do receptor de opt-out (SAIR).
+### Fluxo Completo
 
-## Situacao Atual vs Desejada
+```text
+1. Cliente recebe msg de marketing
+         ↓
+2. Cliente responde "SAIR"
+         ↓
+3. Evolution API → n8n (chat-barbearia)
+         ↓
+4. n8n verifica se msg = "SAIR"?
+      ├── SIM → POST para process-opt-out (receptor-barber)
+      └── NAO → Continua para Agente Jackson
+         ↓
+5. Edge Function process-opt-out:
+      - Encontra cliente pelo telefone
+      - Atualiza marketing_opt_out = true
+      - Envia confirmacao automatica
+         ↓
+6. Proximas campanhas:
+      - send-marketing-campaign filtra clientes com opt-out
+      - Cliente nao recebe mais msgs de marketing
+```
 
-### 1. Webhook Events
-- **Atual**: `["MESSAGES_UPSERT", "CONNECTION_UPDATE"]`
-- **Desejado**: `["MESSAGES_UPSERT"]` (apenas este ativo nos prints)
+### O Que Ja Esta Implementado
 
-### 2. Configuracoes de Comportamento
-- **Atual**: Ja configurado corretamente
-- Rejeitar Chamadas: ON
-- Ignorar Grupos: ON
-- Sempre Online: ON
-- Visualizar Mensagens: ON
-- Sincronizar Historico Completo: OFF
-- Visualizar Status: ON
+1. Edge function `process-opt-out` que atualiza o cliente no banco
+2. Campo `marketing_opt_out` na tabela clients
+3. Filtragem automatica no envio de campanhas (ja ignora clientes com opt-out)
+4. Badge "Opt-out Marketing" visivel na interface de clientes
+5. Mensagem de confirmacao automatica para o cliente ("Voce foi removido...")
+6. Suporte a "VOLTAR" para opt-in novamente
 
-### 3. Nova URL de Opt-Out
-- **URL**: `https://webhook.dtsolucoesdigital.com.br/webhook/receptor-barber`
-- Essa URL sera usada para processar respostas de "SAIR" do marketing
+## O Que Precisa Ser Ajustado
+
+### Problema 1: Lista de Campanhas Mostra Clientes com Opt-Out
+
+Atualmente os clientes com opt-out aparecem na lista de selecao de campanhas. Mesmo que sejam filtrados no backend, isso confunde o usuario.
+
+**Solucao**: Filtrar clientes com opt-out da lista de selecao de campanhas.
+
+### Problema 2: Indicador Visual na Lista de Clientes
+
+Adicionar badge vermelho "Bloqueado" ou icone indicando que o cliente nao recebera marketing.
+
+### Problema 3: Validar Configuracao do n8n
+
+O n8n precisa enviar o payload correto para a edge function:
+
+```json
+{
+  "instanceName": "nome_da_instancia",
+  "sender": "5511999999999@s.whatsapp.net",
+  "message": "SAIR",
+  "secret": "valor_do_N8N_CALLBACK_SECRET",
+  "action": "opt_out"
+}
+```
+
+Para VOLTAR:
+```json
+{
+  "action": "opt_in"
+}
+```
 
 ## Etapas de Implementacao
 
-### Etapa 1: Adicionar novo secret para URL do Receptor
-- Adicionar secret `N8N_OPTOUT_URL` com valor: `https://webhook.dtsolucoesdigital.com.br/webhook/receptor-barber`
-- Esse secret sera usado para configurar um segundo webhook se a Evolution API suportar, ou sera documentado para uso no n8n
+### Etapa 1: Filtrar Clientes com Opt-Out na Lista de Campanhas
 
-### Etapa 2: Atualizar payload de criacao de instancia
-Modificar o codigo em `supabase/functions/evolution-whatsapp/index.ts`:
+Modificar `src/components/marketing/CampaignsTab.tsx`:
+- Adicionar filtro `.filter(c => !c.marketing_opt_out)` na lista de clientes
+- Clientes bloqueados nao aparecerao mais na lista de selecao
 
-```javascript
-// ANTES (linha 119-124)
-webhook: {
-  url: N8N_WEBHOOK_URL,
-  byEvents: false,
-  base64: true,
-  events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"]
-}
+### Etapa 2: Adicionar Contador de Bloqueados
 
-// DEPOIS
-webhook: {
-  url: N8N_WEBHOOK_URL,
-  byEvents: false,
-  base64: true,
-  events: ["MESSAGES_UPSERT"]
-}
-```
+Mostrar quantos clientes estao bloqueados (ex: "45 clientes disponiveis, 3 bloqueados")
 
-### Etapa 3: Configurar webhook secundario (se suportado)
-A Evolution API v2 pode suportar multiplos webhooks. Caso contrario, o n8n principal (chat-barbearia) ja esta configurado para redirecionar mensagens de "SAIR" para o receptor-barber conforme mostrado no workflow.
+### Etapa 3: Criar Filtro "Bloqueados" na Aba de Campanhas
 
-Se a Evolution suportar webhook por eventos separados, podemos configurar:
-- MESSAGES_UPSERT -> chat-barbearia (principal)
-- O opt-out e processado pelo proprio n8n que recebe a mensagem e verifica se contem "SAIR"
+Adicionar opcao para ver clientes que fizeram opt-out:
+- Novo filtro "Bloqueados (SAIR)" na lista de filtros
+- Permite visualizar e gerenciar quem esta bloqueado
+
+### Etapa 4: Adicionar Opcao de Desbloqueio Manual
+
+Na interface de detalhes do cliente, adicionar botao para remover o opt-out manualmente (para casos especiais)
+
+### Etapa 5: Atualizar Interface Visual
+
+Adicionar badge vermelho com icone BellOff para clientes bloqueados quando aparecerem em outras partes do sistema
 
 ## Detalhes Tecnicos
 
-### Arquivo a ser modificado
-- `supabase/functions/evolution-whatsapp/index.ts`
+### Arquivos a Modificar
 
-### Mudancas especificas
+1. `src/components/marketing/CampaignsTab.tsx`
+   - Filtrar clientes com marketing_opt_out = true
+   - Adicionar contador de bloqueados
+   - Adicionar filtro para ver bloqueados
 
-1. **Linha 123**: Remover `"CONNECTION_UPDATE"` do array de eventos
-2. **Adicionar comentario** explicando o fluxo de opt-out
+2. `src/components/clients/ClientDetailsModal.tsx`
+   - Adicionar botao para desbloquear cliente
 
-### Fluxo de Mensagens (baseado no workflow n8n)
+3. `src/hooks/useClients.ts`
+   - Adicionar mutation para toggle de opt-out
+
+### Codigo da Filtragem (CampaignsTab.tsx)
+
+```typescript
+// Linha 60-63 - adicionar filtro de opt-out
+const filteredClients = clients
+  .filter((client) => !client.marketing_opt_out) // NOVO: excluir bloqueados
+  .filter((client) =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.phone.includes(searchTerm)
+  );
+
+// Contador de bloqueados
+const blockedCount = clients.filter(c => c.marketing_opt_out).length;
 ```
-Cliente envia "SAIR" 
-    -> Evolution API 
-    -> N8N (chat-barbearia) 
-    -> Verifica se e "SAIR"?
-        -> SIM: Processa Descadastro (receptor-barber / process-opt-out)
-        -> NAO: Continua para Agente Jackson
+
+### Novo Filtro na Lista
+
+```typescript
+const filterOptions = [
+  { value: "all", label: "Todos os Clientes", icon: Users },
+  { value: "birthday_month", label: "Aniversariantes do Mes", icon: Cake },
+  { value: "inactive", label: "Sumidos (30+ dias)", icon: UserX },
+  { value: "opted_out", label: "Bloqueados (SAIR)", icon: BellOff }, // NOVO
+];
 ```
+
+## Verificacao do n8n
+
+O workflow do n8n mostrado nos prints esta correto:
+- Webhook recebe mensagem
+- Verifica se contem "SAIR" (regex: `^[\s\W]*(SAIR|sair|Sair)[\s\W_]*$`)
+- Envia POST para `process-opt-out` com instanceName, sender, message, secret
+
+**Importante**: O secret enviado pelo n8n deve ser o mesmo valor configurado em `N8N_CALLBACK_SECRET` no Supabase.
 
 ## Resultado Esperado
-- Novas instancias criadas terao apenas o evento `MESSAGES_UPSERT` configurado
-- Webhook Base64 ativo
-- Todas as configuracoes de comportamento aplicadas automaticamente
-- Fluxo de opt-out funcionando atraves do n8n
+
+1. Clientes que enviarem "SAIR" serao automaticamente bloqueados
+2. Receberao confirmacao automatica de que foram removidos
+3. Nao aparecerao mais na lista de selecao de campanhas
+4. Se enviarem "VOLTAR", serao desbloqueados automaticamente
+5. Administrador pode ver e gerenciar clientes bloqueados
+6. Opcao de desbloqueio manual disponivel
 
