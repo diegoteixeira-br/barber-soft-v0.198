@@ -1827,19 +1827,17 @@ async function handleConfirmAppointment(supabase: any, body: any, corsHeaders: a
 
   console.log(`=== CONFIRM_APPOINTMENT: phone=${phone}, response="${response}", instance=${instance_name} ===`);
 
-  // Normalizar telefone (remover formatação e código do país se presente)
-  let normalizedPhone = phone.replace(/\D/g, "");
-  // Remover código do país (55) se presente
-  if (normalizedPhone.startsWith("55") && normalizedPhone.length > 11) {
-    normalizedPhone = normalizedPhone.substring(2);
-  }
-  // Também testar com o código do país
-  const phoneVariants = [normalizedPhone];
-  if (!normalizedPhone.startsWith("55")) {
-    phoneVariants.push("55" + normalizedPhone);
-  }
+  // Normalizar telefone usando as funções padrão do sistema
+  const normalizedPhone = normalizePhoneToStandard(phone);
+  const phoneVariants = [
+    normalizedPhone,
+    ...getPhoneVariations(normalizedPhone),
+    phone.replace(/\D/g, '') // Telefone original sem formatação
+  ];
+  // Remover duplicatas e valores vazios
+  const uniqueVariants = [...new Set(phoneVariants)].filter(Boolean);
 
-  console.log(`Buscando agendamento para telefones: ${phoneVariants.join(", ")}`);
+  console.log(`Buscando agendamento para telefones: ${uniqueVariants.join(", ")}`);
 
   // Buscar agendamento pendente mais próximo deste telefone
   const now = new Date().toISOString();
@@ -1847,7 +1845,7 @@ async function handleConfirmAppointment(supabase: any, body: any, corsHeaders: a
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
     .select("*")
-    .or(phoneVariants.map(p => `client_phone.eq.${p}`).join(","))
+    .or(uniqueVariants.map(p => `client_phone.eq.${p}`).join(","))
     .eq("status", "pending")
     .gte("start_time", now)
     .order("start_time", { ascending: true })
