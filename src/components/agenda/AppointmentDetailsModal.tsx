@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { StatusBadge, getNextStatus } from "./StatusBadge";
-import { PaymentMethodModal, type PaymentMethod } from "@/components/financeiro/PaymentMethodModal";
+import { PaymentMethodModal, PaymentBadge, type PaymentMethod } from "@/components/financeiro/PaymentMethodModal";
 import { useFidelityCourtesy } from "@/hooks/useFidelityCourtesy";
 import { useBusinessSettings } from "@/hooks/useBusinessSettings";
 import { useToast } from "@/hooks/use-toast";
@@ -210,6 +210,13 @@ export function AppointmentDetailsModal({
                 <span>
                   {appointment.service.name} ({appointment.service.duration_minutes} min)
                 </span>
+              </div>
+            )}
+
+            {appointment.status === "completed" && appointment.payment_method && (
+              <div className="flex items-center gap-3 text-sm">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <PaymentBadge method={appointment.payment_method} />
               </div>
             )}
 
