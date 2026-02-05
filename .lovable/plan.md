@@ -1,66 +1,78 @@
 
-
-# Plano: Adicionar Barra de Rolagem ao Modal de Atendimento Rapido
+# Plano: Melhorar Preview de Compartilhamento no WhatsApp
 
 ## Problema Identificado
 
-O modal "Atendimento Rapido" (`QuickServiceModal`) nao possui barra de rolagem. Em computadores com telas menores, os botoes "Cancelar" e "Lancar Atendimento" ficam cortados e inacessiveis.
+Quando o link do BarberSoft e compartilhado no WhatsApp, a preview nao aparece corretamente porque:
 
-## Solucao
+1. A URL da imagem `og:image` esta relativa (`/og-image.png`) no `index.html`
+2. O WhatsApp e outros crawlers nao executam JavaScript, entao ignoram o `SEOHead.tsx`
+3. A imagem precisa de URL absoluta para funcionar
 
-Adicionar o componente `ScrollArea` do Radix UI ao redor do formulario para permitir rolagem vertical quando o conteudo exceder a altura disponivel da tela.
+## O Que o ComunicaZap Faz de Diferente
 
-## Mudancas Tecnicas
+No print, o ComunicaZap mostra:
+- Imagem grande da pagina inicial com o dashboard
+- Titulo: "Comunica Zap - Envio em Massa via WhatsApp"
+- Descricao: "Sistema profissional para disparo de mensagens..."
+- URL: comunicazap.com.br
 
-### Arquivo: `src/components/agenda/QuickServiceModal.tsx`
+## Solucao para o BarberSoft
 
-1. **Importar ScrollArea**
-   - Adicionar import do componente `ScrollArea` de `@/components/ui/scroll-area`
+### Mudancas no index.html
 
-2. **Envolver o formulario com ScrollArea**
-   - Adicionar `ScrollArea` com altura maxima responsiva (`max-h-[70vh]`)
-   - Manter os botoes fixos fora do scroll para sempre estarem visiveis
+Atualizar as meta tags Open Graph com URLs absolutas:
 
-3. **Estrutura proposta**
+```html
+<!-- Open Graph -->
+<meta property="og:title" content="BarberSoft - Sistema de Gestao para Barbearias" />
+<meta property="og:description" content="Gestao completa da sua barbearia. Agenda, financeiro, comissoes, clientes e marketing integrado com WhatsApp. Teste gratis!" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://barbersoft.com.br" />
+<meta property="og:image" content="https://barbersoft.com.br/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:locale" content="pt_BR" />
+<meta property="og:site_name" content="BarberSoft" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="BarberSoft - Sistema de Gestao para Barbearias" />
+<meta name="twitter:description" content="Gestao completa da sua barbearia. Agenda, financeiro, comissoes, clientes e marketing integrado com WhatsApp." />
+<meta name="twitter:image" content="https://barbersoft.com.br/og-image.png" />
+```
+
+### Sobre a Imagem og-image.png
+
+A imagem ideal para o Open Graph deve:
+- Ter 1200x630 pixels (proporcao 1.91:1)
+- Mostrar visualmente o sistema (como o print da landing page do BarberSoft)
+- Ter o logo e textos legiveis
+
+Se a imagem atual (`public/og-image.png`) nao representa bem o sistema, sera necessario criar uma nova baseada na landing page.
+
+## Resultado Esperado
+
+Ao compartilhar `https://barbersoft.com.br` no WhatsApp:
 
 ```text
-DialogContent
-  └── DialogHeader (fixo no topo)
-  └── ScrollArea (max-h-[70vh])
-       └── Form fields (rolaveis)
-  └── Botoes (fixos no rodape)
++------------------------------------------+
+|  [Imagem da Landing Page do BarberSoft]  |
+|  Dashboard + Chat Jackson + Titulo       |
++------------------------------------------+
+| BarberSoft - Sistema de Gestao para      |
+| Barbearias                               |
+| Gestao completa da sua barbearia.        |
+| Agenda, financeiro, comissoes...         |
+| barbersoft.com.br                        |
++------------------------------------------+
 ```
 
-## Codigo da Mudanca
+## Arquivos a Modificar
 
-```typescript
-// Adicionar import
-import { ScrollArea } from "@/components/ui/scroll-area";
+1. `index.html` - Corrigir URLs para absolutas
+2. `public/og-image.png` - Verificar/atualizar imagem (se necessario)
 
-// Estrutura do DialogContent
-<DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-  <DialogHeader>...</DialogHeader>
-  
-  <ScrollArea className="flex-1 pr-4">
-    <Form>
-      <form className="space-y-4">
-        {/* Todos os campos do formulario */}
-      </form>
-    </Form>
-  </ScrollArea>
-  
-  {/* Botoes fora do scroll - sempre visiveis */}
-  <div className="flex justify-end gap-2 pt-4 border-t">
-    <Button variant="outline">Cancelar</Button>
-    <Button type="submit">Lancar Atendimento</Button>
-  </div>
-</DialogContent>
-```
+## Observacao Importante
 
-## Beneficios
-
-- Usuarios com telas menores conseguirao ver e acessar todos os botoes
-- O scroll fica discreto e so aparece quando necessario
-- Os botoes de acao permanecem sempre visiveis na parte inferior
-- Compativel com dispositivos moveis
-
+Apos fazer as mudancas, o cache do WhatsApp pode demorar algumas horas para atualizar. Para testar imediatamente, voce pode usar o Facebook Sharing Debugger (https://developers.facebook.com/tools/debug/) para forcar a atualizacao do cache.
